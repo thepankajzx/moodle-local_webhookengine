@@ -25,8 +25,8 @@
 defined('MOODLE_INTERNAL') || die();
 
 $plugin->component = 'local_webhookengine';
-$plugin->version   = 2026092000;
+$plugin->version = 2026092400;
 $plugin->requires  = 2024100700; // Moodle 4.5.0 LTS.
 $plugin->supported = [405, 502];
 $plugin->maturity  = MATURITY_STABLE;
-$plugin->release   = '1.0.0';
+$plugin->release = '1.0.0 (Lite)';
