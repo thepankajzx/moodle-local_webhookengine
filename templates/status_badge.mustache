@@ -1,0 +1,17 @@
+{{!
+    @template local_webhookengine/status_badge
+
+    Status badge template.
+
+    Example context (json):
+    {
+        "status": "active",
+        "label": "Active",
+        "isactive": true,
+        "iswarning": false,
+        "isdanger": false
+    }
+}}
+<span class="badge {{#isactive}}badge-success bg-success{{/isactive}}{{#iswarning}}badge-warning bg-warning text-dark{{/iswarning}}{{#isdanger}}badge-danger bg-danger{{/isdanger}}">
+    {{label}}
+</span>

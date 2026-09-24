@@ -1,0 +1,13 @@
+# IDE configs
+.vscode/
+.idea/
+*.DS_Store
+
+# Logs
+*.log
+
+# Node (if ever used for Grunt)
+node_modules/
+
+# OS
+Thumbs.db

@@ -1,0 +1,17 @@
+﻿/**
+ * CSS styles for local_webhookengine.
+ *
+ * @package    local_webhookengine
+ * @copyright  2026 Definite Labs
+ * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ */
+
+.local_webhookengine_healthpanel {
+    border-radius: 8px;
+    border: 1px solid rgba(0, 0, 0, 0.125);
+    background-color: #f8f9fa;
+}
+
+.local_webhookengine_healthpanel .card-body {
+    padding: 1.25rem;
+}

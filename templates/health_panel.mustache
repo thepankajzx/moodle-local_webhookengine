@@ -1,0 +1,42 @@
+{{!
+    @template local_webhookengine/health_panel
+
+    Health panel template.
+
+    Example context (json):
+    {
+        "queuedcount": 12,
+        "oldestage": "5 mins",
+        "isdelayed": false,
+        "killswitch": false
+    }
+}}
+<div class="card mb-4 local_webhookengine_healthpanel">
+    <div class="card-body">
+        <div class="row align-items-center">
+            <div class="col-md-4">
+                <div class="text-muted small">{{#str}}queued_deliveries, local_webhookengine{{/str}}</div>
+                <div class="h4 mb-0 font-weight-bold">{{queuedcount}}</div>
+            </div>
+            <div class="col-md-4">
+                <div class="text-muted small">{{#str}}oldest_queued_age, local_webhookengine{{/str}}</div>
+                <div class="h5 mb-0 {{#isdelayed}}text-danger{{/isdelayed}}">
+                    {{#oldestage}}{{oldestage}}{{/oldestage}}
+                    {{^oldestage}}-{{/oldestage}}
+                </div>
+                {{#isdelayed}}
+                <div class="text-danger small mt-1">{{#str}}cron_delayed_warning, local_webhookengine{{/str}}</div>
+                {{/isdelayed}}
+            </div>
+            <div class="col-md-4">
+                <div class="text-muted small">{{#str}}system_status, local_webhookengine{{/str}}</div>
+                {{#killswitch}}
+                <span class="badge badge-danger bg-danger">{{#str}}killswitch_active, local_webhookengine{{/str}}</span>
+                {{/killswitch}}
+                {{^killswitch}}
+                <span class="badge badge-success bg-success">{{#str}}system_operational, local_webhookengine{{/str}}</span>
+                {{/killswitch}}
+            </div>
+        </div>
+    </div>
+</div>

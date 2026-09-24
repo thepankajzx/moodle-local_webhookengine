@@ -1,0 +1,820 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full bg-slate-50">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Event Webhook Engine | Enterprise Documentation</title>
+  <!-- Tailwind CSS & Inter Font -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  
+  <style>
+    body {
+      font-family: 'Inter', sans-serif;
+    }
+    code, pre {
+      font-family: 'JetBrains Mono', monospace;
+    }
+    
+    /* Clean Blue Left Accent Box */
+    .clean-blue-box {
+      position: relative;
+      background: #ffffff;
+      border-radius: 8px 12px 12px 8px;
+      box-shadow: 0 4px 20px -2px rgba(0, 82, 255, 0.05), 0 2px 6px -1px rgba(0, 0, 0, 0.03);
+      overflow: hidden;
+      border: 1px solid rgba(226, 232, 240, 0.9);
+      border-left: none;
+    }
+    .clean-blue-box::before {
+      content: "";
+      position: absolute;
+      left: 0;
+      top: 0;
+      bottom: 0;
+      width: 4px;
+      background: linear-gradient(180deg, #0052FF 0%, #00BFFF 100%);
+      border-radius: 4px 0 0 4px;
+    }
+
+    /* Soft Slate FAQ Card */
+    .faq-card {
+      background: #ffffff;
+      border: 1px solid #e2e8f0;
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 2px 8px -2px rgba(0, 0, 0, 0.04);
+      transition: all 0.2s ease;
+    }
+    .faq-card:hover {
+      border-color: #cbd5e1;
+      box-shadow: 0 6px 18px -4px rgba(0, 82, 255, 0.08);
+    }
+    .faq-header {
+      background: #f1f5f9;
+      border-bottom: 1px solid #e2e8f0;
+      padding: 14px 20px;
+    }
+
+    /* Sleek Dark Navy Code Box */
+    .terminal-box {
+      background: #0d1527;
+      border: 1px solid #1e293b;
+      border-radius: 8px;
+      padding: 12px 16px;
+      color: #38bdf8;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 13px;
+      box-shadow: inset 0 2px 4px rgba(0,0,0,0.4);
+    }
+
+    /* Custom Scrollbar */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #f8fafc;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #cbd5e1;
+      border-radius: 3px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #94a3b8;
+    }
+  </style>
+</head>
+<body class="h-full flex flex-col text-slate-800 antialiased selection:bg-blue-600 selection:text-white">
+
+  <!-- Top Sticky Header -->
+  <header class="sticky top-0 z-50 bg-white/95 backdrop-blur border-b border-slate-200 px-4 lg:px-8 py-3.5 flex items-center justify-between transition-all">
+    <div class="flex items-center space-x-3.5">
+      <!-- Blue App Icon -->
+      <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-blue-600 to-cyan-500 flex items-center justify-center text-white shadow-md shadow-blue-500/20">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M13 10V3L4 14h7v7l9-11h-7z" />
+        </svg>
+      </div>
+      <div>
+        <div class="flex items-center space-x-2">
+          <h1 class="text-lg font-bold text-slate-900 tracking-tight">Event Webhook Engine</h1>
+          <span class="px-2 py-0.5 text-[11px] font-bold tracking-wider uppercase bg-blue-50 text-blue-700 border border-blue-200 rounded-md">Documentation</span>
+        </div>
+        <p class="text-xs text-slate-500 font-medium hidden sm:block">Enterprise LMS Real-Time Event Automation & Integration Guide</p>
+      </div>
+    </div>
+
+    <!-- Right Header Badges & CTA -->
+    <div class="flex items-center space-x-3">
+      <div class="hidden md:flex items-center space-x-1.5 px-3 py-1 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-full text-xs font-semibold">
+        <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+        <span>Moodle 4.2 – 5.3+ Enterprise Tested</span>
+      </div>
+
+      <a href="https://labs.thedefinite.one/#webhookengine" target="_blank" rel="noopener noreferrer" 
+         class="inline-flex items-center space-x-2 px-4 py-2 bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white text-xs font-semibold rounded-lg shadow-sm shadow-blue-500/30 transition-all hover:scale-[1.02] active:scale-[0.98]">
+        <span>Get Pro License</span>
+        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+        </svg>
+      </a>
+    </div>
+  </header>
+
+  <!-- Edge-to-Edge Main Layout -->
+  <div class="flex-1 flex overflow-hidden w-full">
+    
+    <!-- Left Navigation Sidebar -->
+    <aside class="w-72 lg:w-80 bg-white border-r border-slate-200 flex flex-col shrink-0 overflow-y-auto">
+      <div class="p-4 border-b border-slate-100 flex items-center justify-between">
+        <span class="text-xs font-bold uppercase tracking-wider text-slate-400">Chapters Index</span>
+        <span class="px-2 py-0.5 text-[11px] font-semibold bg-slate-100 text-slate-600 rounded-full">8 Sections</span>
+      </div>
+      
+      <nav class="p-3 space-y-1 text-sm font-medium">
+        <a href="#section-1" class="nav-item flex items-center justify-between px-3 py-2.5 rounded-lg text-slate-700 hover:bg-slate-50 hover:text-blue-600 transition-colors">
+          <div class="flex items-center space-x-3">
+            <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+            <span>1. Architecture & Engine</span>
+          </div>
+          <span class="text-xs text-slate-400">Async</span>
+        </a>
+
+        <a href="#section-2" class="nav-item flex items-center justify-between px-3 py-2.5 rounded-lg text-slate-700 hover:bg-slate-50 hover:text-blue-600 transition-colors">
+          <div class="flex items-center space-x-3">
+            <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+            <span>2. Installation Guide</span>
+          </div>
+          <span class="text-xs text-slate-400">Setup</span>
+        </a>
+
+        <a href="#section-3" class="nav-item flex items-center justify-between px-3 py-2.5 rounded-lg text-slate-700 hover:bg-slate-50 hover:text-blue-600 transition-colors">
+          <div class="flex items-center space-x-3">
+            <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+            <span>3. Global Engine Settings</span>
+          </div>
+          <span class="text-xs text-blue-600 font-semibold">Detailed</span>
+        </a>
+
+        <a href="#section-4" class="nav-item flex items-center justify-between px-3 py-2.5 rounded-lg text-slate-700 hover:bg-slate-50 hover:text-blue-600 transition-colors">
+          <div class="flex items-center space-x-3">
+            <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+            <span>4. Creating Webhooks</span>
+          </div>
+          <span class="text-xs text-slate-400">Rules</span>
+        </a>
+
+        <a href="#section-5" class="nav-item flex items-center justify-between px-3 py-2.5 rounded-lg text-slate-700 hover:bg-slate-50 hover:text-blue-600 transition-colors">
+          <div class="flex items-center space-x-3">
+            <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" /></svg>
+            <span>5. Events Catalog</span>
+          </div>
+          <span class="text-xs text-slate-400">Free vs Pro</span>
+        </a>
+
+        <a href="#section-6" class="nav-item flex items-center justify-between px-3 py-2.5 rounded-lg text-slate-700 hover:bg-slate-50 hover:text-blue-600 transition-colors">
+          <div class="flex items-center space-x-3">
+            <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" /></svg>
+            <span>6. Security & Signatures</span>
+          </div>
+          <span class="text-xs text-slate-400">HMAC-256</span>
+        </a>
+
+        <a href="#section-7" class="nav-item flex items-center justify-between px-3 py-2.5 rounded-lg text-slate-700 hover:bg-slate-50 hover:text-blue-600 transition-colors">
+          <div class="flex items-center space-x-3">
+            <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" /></svg>
+            <span>7. Pro Offline Activation</span>
+          </div>
+          <span class="text-xs text-emerald-600 font-semibold">License</span>
+        </a>
+
+        <a href="#section-8" class="nav-item flex items-center justify-between px-3 py-2.5 rounded-lg bg-blue-50/80 text-blue-700 font-semibold border border-blue-200/60 shadow-sm">
+          <div class="flex items-center space-x-3">
+            <svg class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+            <span>8. Troubleshooting & FAQ</span>
+          </div>
+          <span class="text-xs bg-blue-600 text-white px-2 py-0.5 rounded-full font-bold">12 FAQs</span>
+        </a>
+      </nav>
+
+      <!-- Bottom Support Card -->
+      <div class="mt-auto p-4 border-t border-slate-100 bg-slate-50/70">
+        <div class="text-xs font-semibold text-slate-900 mb-1">Need Enterprise Assistance?</div>
+        <p class="text-xs text-slate-500 mb-3 leading-relaxed">Our LMS engineers provide dedicated architecture review & custom webhook integrations.</p>
+        <a href="mailto:support@thedefinite.one" class="block text-center py-2 px-3 bg-white border border-slate-300 hover:border-slate-400 rounded-lg text-xs font-semibold text-slate-700 shadow-2xs hover:bg-slate-50 transition-colors">
+          support@thedefinite.one
+        </a>
+      </div>
+    </aside>
+
+    <!-- Main Content Stream (Edge-to-Edge Scrollable Area) -->
+    <main class="flex-1 overflow-y-auto bg-slate-50/50 p-6 lg:p-10 space-y-12">
+
+      <!-- CHAPTER 1: Architecture -->
+      <section id="section-1" class="space-y-4">
+        <div class="flex items-center space-x-2 text-xs font-bold tracking-wider text-blue-600 uppercase">
+          <span>Core Architecture</span>
+        </div>
+        <h2 class="text-2xl font-bold text-slate-900 tracking-tight">1. Non-Blocking Async Queue Architecture</h2>
+        <p class="text-sm text-slate-600 leading-relaxed">
+          The Event Webhook Engine uses a decoupled, event-driven pipeline designed to eliminate latency for students and teachers. Student interactions (quiz submissions, course enrolments, grade calculations) trigger lightweight in-memory events that write to a local queue table (<code class="text-xs bg-slate-200 px-1 py-0.5 rounded">mdl_local_webhookengine_delivery</code>) in under <strong>2 milliseconds</strong>. Background Moodle ad-hoc tasks independently fetch, sign, and dispatch webhooks to remote endpoints with automatic retries.
+        </p>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 pt-2">
+          <div class="clean-blue-box p-4">
+            <div class="text-sm font-bold text-slate-900 mb-1">1. Event Interception</div>
+            <p class="text-xs text-slate-600 leading-relaxed">Moodle core events are captured synchronously by the observer class, evaluating match filters without blocking the PHP user thread.</p>
+          </div>
+          <div class="clean-blue-box p-4">
+            <div class="text-sm font-bold text-slate-900 mb-1">2. Async Task Queue</div>
+            <p class="text-xs text-slate-600 leading-relaxed">Payloads are pre-compiled, signed with HMAC-SHA256, and queued into Moodle's native ad-hoc task runner.</p>
+          </div>
+          <div class="clean-blue-box p-4">
+            <div class="text-sm font-bold text-slate-900 mb-1">3. Resilient Dispatch</div>
+            <p class="text-xs text-slate-600 leading-relaxed">Parallel workers deliver requests with configurable timeouts, capturing HTTP status codes, response headers, and retry timestamps.</p>
+          </div>
+        </div>
+      </section>
+
+      <hr class="border-slate-200">
+
+      <!-- CHAPTER 2: Installation -->
+      <section id="section-2" class="space-y-4">
+        <div class="flex items-center space-x-2 text-xs font-bold tracking-wider text-blue-600 uppercase">
+          <span>Installation & Verification</span>
+        </div>
+        <h2 class="text-2xl font-bold text-slate-900 tracking-tight">2. Installation Guide</h2>
+        <p class="text-sm text-slate-600 leading-relaxed">Deploy the plugin package through Moodle's native UI or extract directly into your server filesystem.</p>
+
+        <div class="space-y-3">
+          <div class="clean-blue-box p-4">
+            <div class="text-sm font-bold text-slate-900 mb-1">Method A: Moodle Administration UI (Recommended)</div>
+            <p class="text-xs text-slate-600 leading-relaxed">
+              Navigate to <strong class="text-slate-800">Site administration &rarr; Plugins &rarr; Install plugins</strong>. Drag and drop the <code class="text-xs bg-slate-100 px-1 py-0.5 rounded">local_webhookengine.zip</code> archive and follow the on-screen database upgrade prompts.
+            </p>
+          </div>
+
+          <div class="clean-blue-box p-4">
+            <div class="text-sm font-bold text-slate-900 mb-1">Method B: Server Command Line (CLI)</div>
+            <p class="text-xs text-slate-600 mb-2">Extract the plugin folder into your Moodle root and trigger the upgrade CLI:</p>
+            <div class="terminal-box">
+              <span>php /var/www/html/moodle/admin/cli/upgrade.php --non-interactive</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <hr class="border-slate-200">
+
+      <!-- CHAPTER 3: Global Settings (Detailed for Non-Tech LMS Admins) -->
+      <section id="section-3" class="space-y-4">
+        <div class="flex items-center space-x-2 text-xs font-bold tracking-wider text-blue-600 uppercase">
+          <span>Configuration Deep Dive</span>
+        </div>
+        <h2 class="text-2xl font-bold text-slate-900 tracking-tight">3. Global Engine Settings</h2>
+        <p class="text-sm text-slate-600 leading-relaxed">
+          Access these parameters in <strong class="text-slate-800">Site administration &rarr; Plugins &rarr; Local plugins &rarr; Event Webhooks &rarr; Settings</strong>. Each setting controls system resilience, rate capping, and server resource conservation.
+        </p>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+          
+          <!-- Setting 1 -->
+          <div class="clean-blue-box p-5 space-y-2">
+            <div class="flex items-center justify-between">
+              <h3 class="text-sm font-bold text-slate-900">1. Global Enable Switch (`enabled`)</h3>
+              <span class="px-2 py-0.5 bg-emerald-50 text-emerald-700 text-[11px] font-semibold rounded-md border border-emerald-200">Default: Enabled</span>
+            </div>
+            <p class="text-xs text-slate-600 leading-relaxed">
+              Acts as the master circuit breaker for the entire webhook pipeline. When disabled, all incoming Moodle event observers exit instantly with zero database operations, allowing emergency pausing during server maintenance or migration without losing existing hook configurations.
+            </p>
+          </div>
+
+          <!-- Setting 2 -->
+          <div class="clean-blue-box p-5 space-y-2">
+            <div class="flex items-center justify-between">
+              <h3 class="text-sm font-bold text-slate-900">2. Request Timeout (`request_timeout`)</h3>
+              <span class="px-2 py-0.5 bg-slate-100 text-slate-700 text-[11px] font-semibold rounded-md border border-slate-200">Default: 10 Seconds</span>
+            </div>
+            <p class="text-xs text-slate-600 leading-relaxed">
+              Defines the maximum time in seconds Moodle will wait for your external endpoint (n8n, Zapier, Webhook receiver, or custom API) to acknowledge an HTTP POST request before declaring a connection timeout and scheduling a retry.
+            </p>
+          </div>
+
+          <!-- Setting 3 -->
+          <div class="clean-blue-box p-5 space-y-2">
+            <div class="flex items-center justify-between">
+              <h3 class="text-sm font-bold text-slate-900">3. Max Retry Attempts (`max_retries`)</h3>
+              <span class="px-2 py-0.5 bg-slate-100 text-slate-700 text-[11px] font-semibold rounded-md border border-slate-200">Default: 5 Attempts</span>
+            </div>
+            <p class="text-xs text-slate-600 leading-relaxed">
+              Controls how many times the engine will re-dispatch a failed webhook (e.g., HTTP 500, 502, 503, or connection timeouts). Retries use an exponential backoff formula (<code class="text-xs bg-slate-100 px-1 py-0.5 rounded">2^(attempt) * 60s</code>) to prevent overloading recovering target servers.
+            </p>
+          </div>
+
+          <!-- Setting 4 -->
+          <div class="clean-blue-box p-5 space-y-2">
+            <div class="flex items-center justify-between">
+              <h3 class="text-sm font-bold text-slate-900">4. Delivery Log Pruning (`log_retention_days`)</h3>
+              <span class="px-2 py-0.5 bg-slate-100 text-slate-700 text-[11px] font-semibold rounded-md border border-slate-200">Default: 30 Days</span>
+            </div>
+            <p class="text-xs text-slate-600 leading-relaxed">
+              Moodle automatically deletes completed webhook delivery records older than this retention period via a scheduled background task (<code class="text-xs bg-slate-100 px-1 py-0.5 rounded">\local_webhookengine\task\purge_logs</code>). Keeps your database lean even with millions of monthly LMS interactions.
+            </p>
+          </div>
+
+          <!-- Setting 5 -->
+          <div class="clean-blue-box p-5 space-y-2">
+            <div class="flex items-center justify-between">
+              <h3 class="text-sm font-bold text-slate-900">5. Enforce HTTPS (`ssl_verify`)</h3>
+              <span class="px-2 py-0.5 bg-amber-50 text-amber-700 text-[11px] font-semibold rounded-md border border-amber-200">Default: Strict HTTPS</span>
+            </div>
+            <p class="text-xs text-slate-600 leading-relaxed">
+              Requires all destination endpoints to use encrypted <code class="text-xs bg-slate-100 px-1 py-0.5 rounded">https://</code> URLs with valid SSL certificates. Can be toggled OFF strictly in local development or staging environments to allow testing with <code class="text-xs bg-slate-100 px-1 py-0.5 rounded">http://localhost:5678</code> or internal IP subnets.
+            </p>
+          </div>
+
+          <!-- Setting 6 -->
+          <div class="clean-blue-box p-5 space-y-2">
+            <div class="flex items-center justify-between">
+              <h3 class="text-sm font-bold text-slate-900">6. Max Delivery Rate Limit (`rate_limit`)</h3>
+              <span class="px-2 py-0.5 bg-slate-100 text-slate-700 text-[11px] font-semibold rounded-md border border-slate-200">Default: 120 req/min</span>
+            </div>
+            <p class="text-xs text-slate-600 leading-relaxed">
+              Enforces a sliding-window rate limit per endpoint. If a massive quiz attempt or bulk user upload triggers thousands of simultaneous events, the engine automatically buffers dispatches to prevent exhausting downstream API rate caps or triggering HTTP 429 Too Many Requests errors.
+            </p>
+          </div>
+
+        </div>
+      </section>
+
+      <hr class="border-slate-200">
+
+      <!-- CHAPTER 4: Creating Webhooks -->
+      <section id="section-4" class="space-y-4">
+        <div class="flex items-center space-x-2 text-xs font-bold tracking-wider text-blue-600 uppercase">
+          <span>Webhook Configuration</span>
+        </div>
+        <h2 class="text-2xl font-bold text-slate-900 tracking-tight">4. Creating & Managing Webhooks</h2>
+        <p class="text-sm text-slate-600 leading-relaxed">
+          Create new webhook endpoints under <strong class="text-slate-800">Site administration &rarr; Plugins &rarr; Local plugins &rarr; Event Webhooks &rarr; Manage Webhooks</strong>.
+        </p>
+
+        <div class="clean-blue-box p-5 space-y-3">
+          <div class="text-sm font-bold text-slate-900">Key Form Fields Explained:</div>
+          <ul class="space-y-2 text-xs text-slate-600">
+            <li><strong class="text-slate-800">Name:</strong> A descriptive internal label (e.g., "HubSpot CRM Sync", "n8n Quiz Auto-Grading").</li>
+            <li><strong class="text-slate-800">Destination URL:</strong> The target HTTP/HTTPS POST endpoint URL.</li>
+            <li><strong class="text-slate-800">Secret Token:</strong> A 32+ character key used to compute HMAC-SHA256 request signatures for bank-grade verification.</li>
+            <li><strong class="text-slate-800">Subscribed Events:</strong> Select one or more Moodle core events to stream to this endpoint.</li>
+            <li><strong class="text-slate-800">Custom HTTP Headers:</strong> Optional key-value pairs sent with every request (e.g. <code class="bg-slate-100 px-1 py-0.5 rounded">Authorization: Bearer token123</code>, <code class="bg-slate-100 px-1 py-0.5 rounded">X-Custom-Env: production</code>).</li>
+            <li><strong class="text-slate-800">Course / Module Filter:</strong> Optional restrictor to ensure webhooks only fire for specific course IDs or activity module contexts.</li>
+          </ul>
+        </div>
+      </section>
+
+      <hr class="border-slate-200">
+
+      <!-- CHAPTER 5: Events Catalog -->
+      <section id="section-5" class="space-y-4">
+        <div class="flex items-center space-x-2 text-xs font-bold tracking-wider text-blue-600 uppercase">
+          <span>Supported Capabilities</span>
+        </div>
+        <h2 class="text-2xl font-bold text-slate-900 tracking-tight">5. Events Catalog (Free vs Pro Edition)</h2>
+        <p class="text-sm text-slate-600 leading-relaxed">
+          The Free Community Edition includes the 10 most essential Moodle automation events with up to 5 active webhook endpoints. The Pro Enterprise Edition unlocks all 160+ core and third-party events with unlimited endpoints.
+        </p>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2">
+          
+          <!-- Free Edition Box -->
+          <div class="bg-white rounded-xl border border-slate-200 p-6 shadow-sm space-y-4">
+            <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div>
+                <h3 class="text-base font-bold text-slate-900">Free Edition</h3>
+                <span class="text-xs text-slate-500 font-medium">Up to 5 Active Webhooks</span>
+              </div>
+              <span class="px-2.5 py-1 bg-slate-100 text-slate-700 text-xs font-bold rounded-md">10 Core Events</span>
+            </div>
+
+            <ul class="space-y-2.5 text-xs text-slate-700">
+              <li class="flex items-center space-x-2.5">
+                <span class="w-4 h-4 rounded-full bg-emerald-500 flex items-center justify-center text-white shrink-0">
+                  <svg class="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/></svg>
+                </span>
+                <span><code class="font-semibold text-slate-800">\core\event\user_created</code> &mdash; New user signup</span>
+              </li>
+              <li class="flex items-center space-x-2.5">
+                <span class="w-4 h-4 rounded-full bg-emerald-500 flex items-center justify-center text-white shrink-0">
+                  <svg class="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/></svg>
+                </span>
+                <span><code class="font-semibold text-slate-800">\core\event\user_loggedin</code> &mdash; User authentication</span>
+              </li>
+              <li class="flex items-center space-x-2.5">
+                <span class="w-4 h-4 rounded-full bg-emerald-500 flex items-center justify-center text-white shrink-0">
+                  <svg class="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/></svg>
+                </span>
+                <span><code class="font-semibold text-slate-800">\core\event\user_enrolment_created</code> &mdash; Course enrolment</span>
+              </li>
+              <li class="flex items-center space-x-2.5">
+                <span class="w-4 h-4 rounded-full bg-emerald-500 flex items-center justify-center text-white shrink-0">
+                  <svg class="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/></svg>
+                </span>
+                <span><code class="font-semibold text-slate-800">\core\event\user_enrolment_deleted</code> &mdash; Course unenrolment</span>
+              </li>
+              <li class="flex items-center space-x-2.5">
+                <span class="w-4 h-4 rounded-full bg-emerald-500 flex items-center justify-center text-white shrink-0">
+                  <svg class="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/></svg>
+                </span>
+                <span><code class="font-semibold text-slate-800">\core\event\course_completed</code> &mdash; Student completion</span>
+              </li>
+              <li class="flex items-center space-x-2.5">
+                <span class="w-4 h-4 rounded-full bg-emerald-500 flex items-center justify-center text-white shrink-0">
+                  <svg class="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/></svg>
+                </span>
+                <span><code class="font-semibold text-slate-800">\mod_quiz\event\attempt_submitted</code> &mdash; Student quiz submission</span>
+              </li>
+              <li class="flex items-center space-x-2.5">
+                <span class="w-4 h-4 rounded-full bg-emerald-500 flex items-center justify-center text-white shrink-0">
+                  <svg class="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/></svg>
+                </span>
+                <span><code class="font-semibold text-slate-800">\mod_quiz\event\attempt_started</code> &mdash; Student starts quiz</span>
+              </li>
+              <li class="flex items-center space-x-2.5">
+                <span class="w-4 h-4 rounded-full bg-emerald-500 flex items-center justify-center text-white shrink-0">
+                  <svg class="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/></svg>
+                </span>
+                <span><code class="font-semibold text-slate-800">\mod_quiz\event\attempt_preview_started</code> &mdash; Admin/Teacher quiz test</span>
+              </li>
+              <li class="flex items-center space-x-2.5">
+                <span class="w-4 h-4 rounded-full bg-emerald-500 flex items-center justify-center text-white shrink-0">
+                  <svg class="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/></svg>
+                </span>
+                <span><code class="font-semibold text-slate-800">\mod_assign\event\submission_created</code> &mdash; Assignment upload</span>
+              </li>
+              <li class="flex items-center space-x-2.5">
+                <span class="w-4 h-4 rounded-full bg-emerald-500 flex items-center justify-center text-white shrink-0">
+                  <svg class="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/></svg>
+                </span>
+                <span><code class="font-semibold text-slate-800">\mod_assign\event\assessable_submitted</code> &mdash; Assignment submission</span>
+              </li>
+            </ul>
+          </div>
+
+          <!-- Pro Enterprise Edition Box -->
+          <div class="bg-gradient-to-b from-blue-50/50 to-white rounded-xl border-2 border-blue-500/80 p-6 shadow-md shadow-blue-500/5 space-y-4">
+            <div class="flex items-center justify-between border-b border-blue-100 pb-3">
+              <div>
+                <div class="flex items-center space-x-2">
+                  <h3 class="text-base font-bold text-slate-900">Pro Enterprise Edition</h3>
+                  <span class="px-2 py-0.5 bg-blue-600 text-white text-[10px] font-bold rounded-md uppercase tracking-wider">Unlimited</span>
+                </div>
+                <span class="text-xs text-blue-600 font-medium">Unlimited Endpoints & All Events</span>
+              </div>
+              <span class="px-2.5 py-1 bg-blue-600 text-white text-xs font-bold rounded-md shadow-2xs">160+ Events</span>
+            </div>
+
+            <ul class="space-y-2.5 text-xs text-slate-700">
+              <li class="flex items-center space-x-2.5">
+                <span class="w-4 h-4 rounded-full bg-blue-600 flex items-center justify-center text-white shrink-0">
+                  <svg class="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/></svg>
+                </span>
+                <span><strong>All 10 Free Events</strong> included</span>
+              </li>
+              <li class="flex items-center space-x-2.5">
+                <span class="w-4 h-4 rounded-full bg-blue-600 flex items-center justify-center text-white shrink-0">
+                  <svg class="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/></svg>
+                </span>
+                <span><code class="font-semibold text-slate-800">\core\event\user_updated</code> & <code class="font-semibold text-slate-800">\core\event\user_deleted</code></span>
+              </li>
+              <li class="flex items-center space-x-2.5">
+                <span class="w-4 h-4 rounded-full bg-blue-600 flex items-center justify-center text-white shrink-0">
+                  <svg class="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/></svg>
+                </span>
+                <span><code class="font-semibold text-slate-800">\core\event\course_module_completion_updated</code></span>
+              </li>
+              <li class="flex items-center space-x-2.5">
+                <span class="w-4 h-4 rounded-full bg-blue-600 flex items-center justify-center text-white shrink-0">
+                  <svg class="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/></svg>
+                </span>
+                <span><code class="font-semibold text-slate-800">\core\event\user_graded</code> & Gradebook changes</span>
+              </li>
+              <li class="flex items-center space-x-2.5">
+                <span class="w-4 h-4 rounded-full bg-blue-600 flex items-center justify-center text-white shrink-0">
+                  <svg class="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/></svg>
+                </span>
+                <span><code class="font-semibold text-slate-800">\core\event\badge_awarded</code> & Competencies</span>
+              </li>
+              <li class="flex items-center space-x-2.5">
+                <span class="w-4 h-4 rounded-full bg-blue-600 flex items-center justify-center text-white shrink-0">
+                  <svg class="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/></svg>
+                </span>
+                <span><code class="font-semibold text-slate-800">\mod_forum\event\post_created</code> & Forum events</span>
+              </li>
+              <li class="flex items-center space-x-2.5">
+                <span class="w-4 h-4 rounded-full bg-blue-600 flex items-center justify-center text-white shrink-0">
+                  <svg class="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/></svg>
+                </span>
+                <span>Custom HTTP Headers & Advanced Payload Filters</span>
+              </li>
+            </ul>
+
+            <div class="pt-2">
+              <a href="https://labs.thedefinite.one/#webhookengine" target="_blank" rel="noopener noreferrer"
+                 class="w-full flex items-center justify-center space-x-2 py-2.5 px-4 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold transition-all shadow-sm">
+                <span>Unlock Pro Edition</span>
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>
+              </a>
+            </div>
+          </div>
+
+        </div>
+      </section>
+
+      <hr class="border-slate-200">
+
+      <!-- CHAPTER 6: Security & HMAC-SHA256 -->
+      <section id="section-6" class="space-y-4">
+        <div class="flex items-center space-x-2 text-xs font-bold tracking-wider text-blue-600 uppercase">
+          <span>Security & Authentication</span>
+        </div>
+        <h2 class="text-2xl font-bold text-slate-900 tracking-tight">6. Bank-Grade Security & HMAC-SHA256 Verification</h2>
+        <p class="text-sm text-slate-600 leading-relaxed">
+          Every HTTP POST request sent by the engine includes two cryptographic security headers: <code class="text-xs bg-slate-200 px-1 py-0.5 rounded">X-Moodle-Signature-256</code> and <code class="text-xs bg-slate-200 px-1 py-0.5 rounded">X-Moodle-Timestamp</code>. This guarantees payload integrity and prevents replay attacks.
+        </p>
+
+        <div class="clean-blue-box p-5 space-y-3">
+          <div class="text-sm font-bold text-slate-900">How Signature Verification Works:</div>
+          <ol class="list-decimal list-inside space-y-1.5 text-xs text-slate-600 leading-relaxed">
+            <li>Moodle concatenates the UNIX timestamp and the raw JSON request body: <code class="bg-slate-100 px-1 py-0.5 rounded">payload_to_sign = timestamp + "." + raw_json_body</code></li>
+            <li>Calculates the HMAC-SHA256 hex digest using your configured secret token.</li>
+            <li>Your receiving server computes the same hash and verifies using constant-time comparison (<code class="bg-slate-100 px-1 py-0.5 rounded">hash_equals</code> in PHP or <code class="bg-slate-100 px-1 py-0.5 rounded">crypto.timingSafeEqual</code> in Node.js).</li>
+            <li>Rejects any requests where <code class="bg-slate-100 px-1 py-0.5 rounded">|current_time - timestamp| > 300 seconds</code> to prevent replay exploits.</li>
+          </ol>
+        </div>
+
+        <div class="space-y-2">
+          <div class="text-xs font-semibold text-slate-700">Python Verification Example (FastAPI / Flask):</div>
+          <div class="terminal-box">
+<pre class="text-slate-300">
+import hmac, hashlib, time
+
+def verify_moodle_webhook(raw_body: bytes, timestamp: str, signature: str, secret: str) -> bool:
+    # 1. Reject if timestamp is older than 5 minutes (Replay defense)
+    if abs(time.time() - int(timestamp)) > 300:
+        return False
+    # 2. Recompute expected HMAC-SHA256 signature
+    message = f"{timestamp}.".encode('utf-8') + raw_body
+    expected = hmac.new(secret.encode('utf-8'), message, hashlib.sha256).hexdigest()
+    # 3. Constant-time string comparison
+    return hmac.compare_digest(expected, signature)
+</pre>
+          </div>
+        </div>
+      </section>
+
+      <hr class="border-slate-200">
+
+      <!-- CHAPTER 7: Pro License Activation -->
+      <section id="section-7" class="space-y-4">
+        <div class="flex items-center space-x-2 text-xs font-bold tracking-wider text-blue-600 uppercase">
+          <span>License Management</span>
+        </div>
+        <h2 class="text-2xl font-bold text-slate-900 tracking-tight">7. Activating Your Pro Offline License</h2>
+        <p class="text-sm text-slate-600 leading-relaxed">
+          The Event Webhook Engine Pro edition operates with an entirely <strong>offline, privacy-first licensing system</strong>. The plugin never makes external phone-home requests or communicates with external DRM servers, ensuring compliance with institutional privacy policies.
+        </p>
+
+        <div class="space-y-3">
+          <div class="clean-blue-box p-5 space-y-2">
+            <div class="text-sm font-bold text-slate-900">Step 1: Purchase & Domain Binding</div>
+            <p class="text-xs text-slate-600 leading-relaxed">
+              Order your Pro license from <a href="https://labs.thedefinite.one/#webhookengine" class="text-blue-600 font-semibold underline" target="_blank">https://labs.thedefinite.one/#webhookengine</a>. Your license key is cryptographically signed and locked to your Moodle site's configured domain name (<code class="bg-slate-100 px-1 py-0.5 rounded">$CFG-&gt;wwwroot</code>).
+            </p>
+          </div>
+
+          <div class="clean-blue-box p-5 space-y-2">
+            <div class="text-sm font-bold text-slate-900">Step 2: Enter Key in Moodle Admin</div>
+            <p class="text-xs text-slate-600 leading-relaxed">
+              Navigate to <strong class="text-slate-800">Site administration &rarr; Plugins &rarr; Local plugins &rarr; Event Webhooks &rarr; Settings</strong>. Paste your license key into the <strong class="text-slate-800">Pro License Key</strong> field and click <strong class="text-slate-800">Save changes</strong>. The Pro status badge will immediately turn green.
+            </p>
+          </div>
+
+          <div class="clean-blue-box p-5 space-y-2">
+            <div class="text-sm font-bold text-slate-900">Domain Migration & Staging Policies</div>
+            <p class="text-xs text-slate-600 leading-relaxed">
+              Need to migrate from a staging domain (e.g. <code class="bg-slate-100 px-1 py-0.5 rounded">staging.lms.com</code>) to production (<code class="bg-slate-100 px-1 py-0.5 rounded">learn.company.com</code>)? Simply send your invoice number and new domain to <a href="mailto:support@thedefinite.one" class="text-blue-600 font-semibold underline">support@thedefinite.one</a> for free, instant domain re-issuance.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <hr class="border-slate-200">
+
+      <!-- CHAPTER 8: Troubleshooting & FAQs (12 Detailed Scenarios) -->
+      <section id="section-8" class="space-y-6">
+        <div>
+          <div class="flex items-center space-x-2 text-xs font-bold tracking-wider text-blue-600 uppercase">
+            <span>Solutions & Real-World FAQs</span>
+          </div>
+          <h2 class="text-2xl font-bold text-slate-900 tracking-tight">8. Troubleshooting & Common Administrator Questions</h2>
+          <p class="text-sm text-slate-600 leading-relaxed">
+            Step-by-step resolutions for the 12 most frequent server, cron, SSL, and network scenarios encountered by LMS administrators.
+          </p>
+        </div>
+
+        <div class="space-y-4">
+
+          <!-- FAQ 1 -->
+          <div class="faq-card">
+            <div class="faq-header flex items-center justify-between">
+              <span class="text-xs font-bold text-slate-800 flex items-center space-x-2">
+                <span class="w-5 h-5 rounded bg-blue-100 text-blue-700 flex items-center justify-center text-[11px] font-extrabold">Q1</span>
+                <span>Webhook deliveries remain stuck in "Queued" status and never dispatch</span>
+              </span>
+              <span class="text-[11px] font-semibold text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded">Cron Issue</span>
+            </div>
+            <div class="p-5 space-y-3 bg-white text-xs text-slate-600 leading-relaxed">
+              <p><strong class="text-slate-800">Root Cause:</strong> Moodle's background ad-hoc task cron runner is not executing on your server.</p>
+              <p><strong class="text-slate-800">Solution:</strong> Webhooks are processed asynchronously by background tasks. Test manual execution via server CLI:</p>
+              <div class="terminal-box">
+                <span>php /path/to/moodle/admin/cli/adhoc_task.php --execute</span>
+              </div>
+              <p>Ensure your server crontab (Linux) or Windows Task Scheduler runs <code class="bg-slate-100 px-1 py-0.5 rounded text-slate-800">php admin/cli/cron.php</code> every 1 minute.</p>
+            </div>
+          </div>
+
+          <!-- FAQ 2 -->
+          <div class="faq-card">
+            <div class="faq-header flex items-center justify-between">
+              <span class="text-xs font-bold text-slate-800 flex items-center space-x-2">
+                <span class="w-5 h-5 rounded bg-blue-100 text-blue-700 flex items-center justify-center text-[11px] font-extrabold">Q2</span>
+                <span>Admin submitted a quiz attempt, but `attempt_submitted` event was not logged</span>
+              </span>
+              <span class="text-[11px] font-semibold text-blue-700 bg-blue-50 border border-blue-200 px-2 py-0.5 rounded">Moodle Core Logic</span>
+            </div>
+            <div class="p-5 space-y-3 bg-white text-xs text-slate-600 leading-relaxed">
+              <p><strong class="text-slate-800">Root Cause:</strong> Moodle classifies Administrator and Teacher quiz submissions as <em>Previews</em> (<code class="bg-slate-100 px-1 py-0.5 rounded">preview = 1</code>).</p>
+              <p><strong class="text-slate-800">Solution:</strong> Moodle core suppresses <code class="bg-slate-100 px-1 py-0.5 rounded text-slate-800">\mod_quiz\event\attempt_submitted</code> during previews and fires <code class="bg-slate-100 px-1 py-0.5 rounded text-slate-800">\mod_quiz\event\attempt_preview_started</code> instead. Real <code class="bg-slate-100 px-1 py-0.5 rounded text-slate-800">attempt_submitted</code> events are exclusively fired when an enrolled <strong>Student</strong> submits a quiz. Both events are supported.</p>
+            </div>
+          </div>
+
+          <!-- FAQ 3 -->
+          <div class="faq-card">
+            <div class="faq-header flex items-center justify-between">
+              <span class="text-xs font-bold text-slate-800 flex items-center space-x-2">
+                <span class="w-5 h-5 rounded bg-blue-100 text-blue-700 flex items-center justify-center text-[11px] font-extrabold">Q3</span>
+                <span>Saving endpoint gives "Only secure HTTPS URLs are permitted"</span>
+              </span>
+              <span class="text-[11px] font-semibold text-slate-700 bg-slate-100 border border-slate-200 px-2 py-0.5 rounded">Security</span>
+            </div>
+            <div class="p-5 space-y-3 bg-white text-xs text-slate-600 leading-relaxed">
+              <p><strong class="text-slate-800">Root Cause:</strong> Plain HTTP endpoints are blocked by default for production security.</p>
+              <p><strong class="text-slate-800">Solution:</strong> For local development (e.g. testing with local Docker n8n on <code class="bg-slate-100 px-1 py-0.5 rounded">http://localhost:5678</code>), go to <strong class="text-slate-800">Site admin &rarr; Plugins &rarr; Local plugins &rarr; Event Webhooks &rarr; Settings</strong> and disable <strong class="text-slate-800">Enforce HTTPS Only</strong>.</p>
+            </div>
+          </div>
+
+          <!-- FAQ 4 -->
+          <div class="faq-card">
+            <div class="faq-header flex items-center justify-between">
+              <span class="text-xs font-bold text-slate-800 flex items-center space-x-2">
+                <span class="w-5 h-5 rounded bg-blue-100 text-blue-700 flex items-center justify-center text-[11px] font-extrabold">Q4</span>
+                <span>n8n or Zapier returns HTTP 401 / "Invalid Signature" error</span>
+              </span>
+              <span class="text-[11px] font-semibold text-purple-700 bg-purple-50 border border-purple-200 px-2 py-0.5 rounded">HMAC Signature</span>
+            </div>
+            <div class="p-5 space-y-3 bg-white text-xs text-slate-600 leading-relaxed">
+              <p><strong class="text-slate-800">Root Cause:</strong> Automation tools sometimes parse and re-stringify the JSON body, changing whitespace and corrupting hash validation.</p>
+              <p><strong class="text-slate-800">Solution:</strong> Ensure your webhook receiver validates the signature against the <strong>raw unmodified HTTP request body bytes</strong> before JSON parsing.</p>
+            </div>
+          </div>
+
+          <!-- FAQ 5 -->
+          <div class="faq-card">
+            <div class="faq-header flex items-center justify-between">
+              <span class="text-xs font-bold text-slate-800 flex items-center space-x-2">
+                <span class="w-5 h-5 rounded bg-blue-100 text-blue-700 flex items-center justify-center text-[11px] font-extrabold">Q5</span>
+                <span>Deliveries show HTTP 504 or Connection Timeout during large exam spikes</span>
+              </span>
+              <span class="text-[11px] font-semibold text-rose-700 bg-rose-50 border border-rose-200 px-2 py-0.5 rounded">Performance</span>
+            </div>
+            <div class="p-5 space-y-3 bg-white text-xs text-slate-600 leading-relaxed">
+              <p><strong class="text-slate-800">Root Cause:</strong> The destination API server cannot handle the influx of simultaneous webhook connections.</p>
+              <p><strong class="text-slate-800">Solution:</strong> In plugin settings, configure the <strong class="text-slate-800">Rate Limit</strong> slider to <code class="bg-slate-100 px-1 py-0.5 rounded">60 req/min</code> and set <strong class="text-slate-800">Request Timeout</strong> to <code class="bg-slate-100 px-1 py-0.5 rounded">15s</code>. Moodle will buffer dispatches without failing student attempts.</p>
+            </div>
+          </div>
+
+          <!-- FAQ 6 -->
+          <div class="faq-card">
+            <div class="faq-header flex items-center justify-between">
+              <span class="text-xs font-bold text-slate-800 flex items-center space-x-2">
+                <span class="w-5 h-5 rounded bg-blue-100 text-blue-700 flex items-center justify-center text-[11px] font-extrabold">Q6</span>
+                <span>How do I filter webhooks for a specific course or category only?</span>
+              </span>
+              <span class="text-[11px] font-semibold text-blue-700 bg-blue-50 border border-blue-200 px-2 py-0.5 rounded">Filtering</span>
+            </div>
+            <div class="p-5 space-y-3 bg-white text-xs text-slate-600 leading-relaxed">
+              <p><strong class="text-slate-800">Solution:</strong> In the Webhook Edit form, populate the <strong class="text-slate-800">Course Filter</strong> field with target Course IDs (e.g. <code class="bg-slate-100 px-1 py-0.5 rounded">5, 12, 48</code>). Events generated in other courses will be silently ignored before queuing.</p>
+            </div>
+          </div>
+
+          <!-- FAQ 7 -->
+          <div class="faq-card">
+            <div class="faq-header flex items-center justify-between">
+              <span class="text-xs font-bold text-slate-800 flex items-center space-x-2">
+                <span class="w-5 h-5 rounded bg-blue-100 text-blue-700 flex items-center justify-center text-[11px] font-extrabold">Q7</span>
+                <span>Does this plugin slow down student page loads or quiz submissions?</span>
+              </span>
+              <span class="text-[11px] font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded">Zero Latency</span>
+            </div>
+            <div class="p-5 space-y-3 bg-white text-xs text-slate-600 leading-relaxed">
+              <p><strong class="text-slate-800">Answer:</strong> <strong>No.</strong> The engine uses 100% asynchronous background ad-hoc tasks. When a student submits an assignment or quiz, Moodle inserts a queue record in under 2ms and finishes the page render immediately without waiting for HTTP connections.</p>
+            </div>
+          </div>
+
+          <!-- FAQ 8 -->
+          <div class="faq-card">
+            <div class="faq-header flex items-center justify-between">
+              <span class="text-xs font-bold text-slate-800 flex items-center space-x-2">
+                <span class="w-5 h-5 rounded bg-blue-100 text-blue-700 flex items-center justify-center text-[11px] font-extrabold">Q8</span>
+                <span>How can I replay a failed webhook delivery without re-triggering user actions?</span>
+              </span>
+              <span class="text-[11px] font-semibold text-slate-700 bg-slate-100 border border-slate-200 px-2 py-0.5 rounded">Deliveries</span>
+            </div>
+            <div class="p-5 space-y-3 bg-white text-xs text-slate-600 leading-relaxed">
+              <p><strong class="text-slate-800">Solution:</strong> Navigate to <strong class="text-slate-800">Site admin &rarr; Plugins &rarr; Local plugins &rarr; Event Webhooks &rarr; Delivery Logs</strong>. Locate the failed delivery row and click the <strong class="text-slate-800">Replay</strong> button. The payload will be re-queued and dispatched immediately.</p>
+            </div>
+          </div>
+
+          <!-- FAQ 9 -->
+          <div class="faq-card">
+            <div class="faq-header flex items-center justify-between">
+              <span class="text-xs font-bold text-slate-800 flex items-center space-x-2">
+                <span class="w-5 h-5 rounded bg-blue-100 text-blue-700 flex items-center justify-center text-[11px] font-extrabold">Q9</span>
+                <span>What happens if the receiving endpoint goes down for several hours?</span>
+              </span>
+              <span class="text-[11px] font-semibold text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded">Resilience</span>
+            </div>
+            <div class="p-5 space-y-3 bg-white text-xs text-slate-600 leading-relaxed">
+              <p><strong class="text-slate-800">Answer:</strong> Deliveries transition into <code class="bg-slate-100 px-1 py-0.5 rounded text-amber-800 font-semibold">Retry</code> status. The engine retries up to your configured <strong class="text-slate-800">Max Retries</strong> (default 5) with exponential backoff. Once the target endpoint recovers, queued deliveries succeed automatically.</p>
+            </div>
+          </div>
+
+          <!-- FAQ 10 -->
+          <div class="faq-card">
+            <div class="faq-header flex items-center justify-between">
+              <span class="text-xs font-bold text-slate-800 flex items-center space-x-2">
+                <span class="w-5 h-5 rounded bg-blue-100 text-blue-700 flex items-center justify-center text-[11px] font-extrabold">Q10</span>
+                <span>How do I transfer my Pro License when migrating to a new domain?</span>
+              </span>
+              <span class="text-[11px] font-semibold text-blue-700 bg-blue-50 border border-blue-200 px-2 py-0.5 rounded">Licensing</span>
+            </div>
+            <div class="p-5 space-y-3 bg-white text-xs text-slate-600 leading-relaxed">
+              <p><strong class="text-slate-800">Solution:</strong> Email <a href="mailto:support@thedefinite.one" class="text-blue-600 font-semibold underline">support@thedefinite.one</a> with your purchase invoice number and your new Moodle domain URL. A new offline key will be issued immediately with zero downtime.</p>
+            </div>
+          </div>
+
+          <!-- FAQ 11 -->
+          <div class="faq-card">
+            <div class="faq-header flex items-center justify-between">
+              <span class="text-xs font-bold text-slate-800 flex items-center space-x-2">
+                <span class="w-5 h-5 rounded bg-blue-100 text-blue-700 flex items-center justify-center text-[11px] font-extrabold">Q11</span>
+                <span>How is database table bloat prevented over time?</span>
+              </span>
+              <span class="text-[11px] font-semibold text-slate-700 bg-slate-100 border border-slate-200 px-2 py-0.5 rounded">Maintenance</span>
+            </div>
+            <div class="p-5 space-y-3 bg-white text-xs text-slate-600 leading-relaxed">
+              <p><strong class="text-slate-800">Answer:</strong> The engine includes an automated scheduled task (<code class="bg-slate-100 px-1 py-0.5 rounded text-slate-800">\local_webhookengine\task\purge_logs</code>) running daily to delete successful delivery logs exceeding your retention threshold (default 30 days).</p>
+            </div>
+          </div>
+
+          <!-- FAQ 12 -->
+          <div class="faq-card">
+            <div class="faq-header flex items-center justify-between">
+              <span class="text-xs font-bold text-slate-800 flex items-center space-x-2">
+                <span class="w-5 h-5 rounded bg-blue-100 text-blue-700 flex items-center justify-center text-[11px] font-extrabold">Q12</span>
+                <span>How to test webhooks on a local development setup?</span>
+              </span>
+              <span class="text-[11px] font-semibold text-purple-700 bg-purple-50 border border-purple-200 px-2 py-0.5 rounded">Local Dev</span>
+            </div>
+            <div class="p-5 space-y-3 bg-white text-xs text-slate-600 leading-relaxed">
+              <p><strong class="text-slate-800">Solution:</strong> Use tools like Docker n8n (<code class="bg-slate-100 px-1 py-0.5 rounded">http://localhost:5678/webhook/...</code>) or ngrok tunnels. Remember to set <strong class="text-slate-800">Enforce HTTPS Only</strong> to <code class="bg-slate-100 px-1 py-0.5 rounded">No</code> in plugin settings when testing HTTP local URLs.</p>
+            </div>
+          </div>
+
+        </div>
+      </section>
+
+      <!-- Footer Branding & Copyright -->
+      <footer class="pt-8 pb-12 border-t border-slate-200 text-center text-xs text-slate-500 space-y-2">
+        <p class="font-semibold text-slate-700">Event Webhook Engine &copy; 2026 The Definite Lab. All rights reserved.</p>
+        <p>Built exclusively for high-scale Moodle 4.2 - 5.3+ enterprise LMS environments. Strictly follows Moodle HQ security & coding standards.</p>
+      </footer>
+
+    </main>
+  </div>
+
+</body>
+</html>
