@@ -281,5 +281,5 @@ This plugin is licensed under the [GNU General Public License v3 or later](LICEN
 ## 9. Bug Tracker & Support
 
 Please report any bugs or feature requests on our public issue tracker:
-[https://github.com/definitelabs/moodle-local_webhookengine/issues](https://github.com/definitelabs/moodle-local_webhookengine/issues)
+[https://github.com/thepankajzx/moodle-local_webhookengine/issues](https://github.com/thepankajzx/moodle-local_webhookengine/issues)
 
