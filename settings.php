@@ -29,17 +29,7 @@ require_once($CFG->dirroot . '/local/webhookengine/classes/admin_setting_activat
 if ($hassiteconfig || has_capability('local/webhookengine:manage', context_system::instance())) {
     $ADMIN->add('localplugins', new admin_category('local_webhookengine_cat', get_string('pluginname', 'local_webhookengine')));
 
-    // Pro upgrade notice (Free edition only).
-    if (!\local_webhookengine\pro_unlock::is_pro()) {
-        $upgradeurl = \local_webhookengine\pro_unlock::get_upgrade_url();
-        $ADMIN->add('local_webhookengine_cat', new admin_externalpage(
-            'local_webhookengine_upgrade',
-            '⭐ ' . get_string('upgrade_to_pro', 'local_webhookengine'),
-            $upgradeurl,
-            'local/webhookengine:manage'
-        ));
-    }
-
+    
     // Manage Webhooks Link.
     $ADMIN->add('local_webhookengine_cat', new admin_externalpage(
         'local_webhookengine_manage',

@@ -55,14 +55,10 @@ $cancreate = \local_webhookengine\pro_unlock::can_create_hook();
 if (!\local_webhookengine\pro_unlock::is_pro()) {
     $usagedata = (object) ['used' => $hookscount, 'max' => \local_webhookengine\pro_unlock::FREE_MAX_HOOKS];
     $usagemsg = get_string('free_hooks_usage', 'local_webhookengine', $usagedata);
-    $upgradeurl = \local_webhookengine\pro_unlock::get_upgrade_url();
+    
 
     $limitbadge = html_writer::span($usagemsg, 'badge bg-info text-dark py-2 px-3 me-2');
-    $upgradelink = html_writer::link(
-        $upgradeurl,
-        get_string('upgrade_to_pro', 'local_webhookengine'),
-        ['target' => '_blank', 'class' => 'btn btn-sm btn-warning ms-2']
-    );
+    $upgradelink = "";
 
     if ($cancreate) {
         $addurl = new moodle_url('/local/webhookengine/edit.php');
