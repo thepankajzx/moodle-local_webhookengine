@@ -23,4 +23,8 @@ class pro_unlock {
     public static function get_upgrade_url(): string {
         return 'https://acuityos.com';
     }
+    public static function can_create_hook(): bool {
+        global $DB;
+        return $DB->count_records('local_webhookengine_hook') < 5;
+    }
 }

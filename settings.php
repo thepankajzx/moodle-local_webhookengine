@@ -49,15 +49,7 @@ if ($hassiteconfig || has_capability('local/webhookengine:manage', context_syste
     // Global Settings Page.
     $settingspage = new admin_settingpage('local_webhookengine_settings', get_string('settings', 'local_webhookengine'));
 
-    // Pro Activation.
-    $settingspage->add(new local_webhookengine_admin_setting_activation(
-        'local_webhookengine/activation_code',
-        get_string('activation_code', 'local_webhookengine'),
-        get_string('activation_code_desc', 'local_webhookengine'),
-        '',
-        PARAM_RAW
-    ));
-
+    
     // Global Kill Switch.
     $settingspage->add(new admin_setting_configcheckbox(
         'local_webhookengine/killswitch',
