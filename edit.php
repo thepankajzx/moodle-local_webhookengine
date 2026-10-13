@@ -27,7 +27,6 @@ require_once($CFG->libdir . '/adminlib.php');
 
 use local_webhookengine\form\hook_form;
 use local_webhookengine\hook_repository;
-use local_webhookengine\pro_unlock;
 
 require_login();
 $context = context_system::instance();
@@ -41,13 +40,6 @@ if ($id > 0) {
     if (!$hook) {
         throw new \moodle_exception('error_hook_not_found', 'local_webhookengine');
     }
-} else if (!pro_unlock::can_create_hook()) {
-    redirect(
-        new moodle_url('/local/webhookengine/manage.php'),
-        get_string('free_hook_limit_reached', 'local_webhookengine', pro_unlock::FREE_MAX_HOOKS),
-        null,
-        \core\output\notification::NOTIFY_WARNING
-    );
 }
 
 $pageurl = new moodle_url('/local/webhookengine/edit.php', ['id' => $id]);

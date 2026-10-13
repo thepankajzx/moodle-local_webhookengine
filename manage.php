@@ -46,39 +46,48 @@ $killswitch = (bool) get_config('local_webhookengine', 'killswitch');
 
 echo $renderer->render_health_panel($queuedcount, $oldestage, $killswitch);
 
+// Check for newly created hook signing secret to display one-time.
+$createdid = optional_param('created', 0, PARAM_INT);
+if ($createdid > 0) {
+    $sessionkey = 'local_webhookengine_new_secret_' . $createdid;
+    if (!empty($SESSION->$sessionkey)) {
+        $newsecret = $SESSION->$sessionkey;
+        unset($SESSION->$sessionkey);
+
+        $copybtn = html_writer::tag('button', get_string('copy_secret', 'local_webhookengine'), [
+            'type' => 'button',
+            'class' => 'btn btn-sm btn-outline-dark ms-2',
+            'onclick' => 'navigator.clipboard.writeText(' . json_encode($newsecret) . ').then(function() { alert(' .
+                json_encode(get_string('secret_copied', 'local_webhookengine')) . '); });',
+        ]);
+
+        $secretbox = html_writer::div(
+            html_writer::tag('strong', get_string('signing_secret', 'local_webhookengine') . ': ') .
+            html_writer::tag('code', s($newsecret), ['class' => 'p-1 bg-light rounded text-monospace']) .
+            $copybtn,
+            'd-flex align-items-center flex-wrap my-2'
+        );
+
+        $secretnotice = html_writer::div(
+            html_writer::tag('h5', get_string('new_secret_title', 'local_webhookengine'), ['class' => 'alert-heading']) .
+            html_writer::tag('p', get_string('new_secret_warning', 'local_webhookengine'), ['class' => 'mb-2']) .
+            $secretbox,
+            'alert alert-success alert-dismissible fade show mb-4',
+            ['role' => 'alert']
+        );
+
+        echo $secretnotice;
+    }
+}
+
 // Hooks Table.
 $hooks = $DB->get_records('local_webhookengine_hook', [], 'id ASC');
-$hookscount = count($hooks);
-$cancreate = \local_webhookengine\pro_unlock::can_create_hook();
 
-// Add Hook Button and Free Tier Limit Notice.
-if (!\local_webhookengine\pro_unlock::is_pro()) {
-    $usagedata = (object) ['used' => $hookscount, 'max' => \local_webhookengine\pro_unlock::FREE_MAX_HOOKS];
-    $usagemsg = get_string('free_hooks_usage', 'local_webhookengine', $usagedata);
-    
-
-    $limitbadge = html_writer::span($usagemsg, 'badge bg-info text-dark py-2 px-3 me-2');
-    $upgradelink = "";
-
-    if ($cancreate) {
-        $addurl = new moodle_url('/local/webhookengine/edit.php');
-        $addbtn = html_writer::link($addurl, get_string('add_new_hook', 'local_webhookengine'), ['class' => 'btn btn-primary me-2']);
-        echo html_writer::div($addbtn . $limitbadge . $upgradelink, 'd-flex align-items-center mb-3');
-    } else {
-        $limitwarning = html_writer::div(
-            html_writer::tag('strong', get_string('free_hook_limit_reached', 'local_webhookengine', \local_webhookengine\pro_unlock::FREE_MAX_HOOKS)) .
-            ' ' . $upgradelink,
-            'alert alert-warning mb-3'
-        );
-        echo $limitwarning;
-    }
-} else {
-    $addurl = new moodle_url('/local/webhookengine/edit.php');
-    echo html_writer::div(
-        html_writer::link($addurl, get_string('add_new_hook', 'local_webhookengine'), ['class' => 'btn btn-primary mb-3']),
-        'mb-3'
-    );
-}
+$addurl = new moodle_url('/local/webhookengine/edit.php');
+echo html_writer::div(
+    html_writer::link($addurl, get_string('add_new_hook', 'local_webhookengine'), ['class' => 'btn btn-primary mb-3']),
+    'mb-3'
+);
 
 if (empty($hooks)) {
     echo $OUTPUT->notification(get_string('no_hooks_configured', 'local_webhookengine'), 'info');

@@ -163,7 +163,7 @@ switch ($action) {
         $msg = get_string('test_sent_result', 'local_webhookengine', [
             'status' => $res->status ?: '0',
             'duration' => $res->duration,
-            'error' => !empty($res->error) ? $res->error : 'none',
+            'error' => !empty($res->error) ? s($res->error) : 'none',
         ]);
         $type = ($res->status >= 200 && $res->status < 300)
             ? \core\output\notification::NOTIFY_SUCCESS

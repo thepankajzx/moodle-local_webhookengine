@@ -37,38 +37,39 @@ class http_client {
         global $CFG;
         require_once($CFG->libdir . '/filelib.php');
 
-        $ch = curl_init();
-        curl_setopt($ch, CURLOPT_URL, $url);
-        curl_setopt($ch, CURLOPT_POST, true);
-        curl_setopt($ch, CURLOPT_POSTFIELDS, $body);
-        curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_HEADER, true);
-        curl_setopt($ch, CURLOPT_NOBODY, false);
-        curl_setopt($ch, CURLOPT_TIMEOUT, max(1, min(30, $timeout)));
-        curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 5);
-        curl_setopt($ch, CURLOPT_FOLLOWLOCATION, false); // Strict: do not follow redirects.
-        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, true);
-        curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 2);
+        $curl = new \curl(['ignoresecurity' => false]);
+        $curl->setHeader($headers);
+
+        $options = [
+            'CURLOPT_TIMEOUT' => max(1, min(30, $timeout)),
+            'CURLOPT_CONNECTTIMEOUT' => 5,
+            'CURLOPT_FOLLOWLOCATION' => 0,
+            'CURLOPT_SSL_VERIFYPEER' => 1,
+            'CURLOPT_SSL_VERIFYHOST' => 2,
+        ];
 
         $starttime = microtime(true);
-        $response = curl_exec($ch);
+        $response = $curl->post($url, $body, $options);
         $duration = (int) round((microtime(true) - $starttime) * 1000);
 
-        $errno = curl_errno($ch);
-        $error = curl_error($ch);
-        $status = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        $headersize = (int) curl_getinfo($ch, CURLINFO_HEADER_SIZE);
+        $info = $curl->get_info();
+        $status = (int) ($info['http_code'] ?? 0);
+        $errno = (int) $curl->get_errno();
+        $error = (string) $curl->error;
 
         $retryafter = null;
-        if ($response !== false && $headersize > 0) {
-            $headertext = substr($response, 0, $headersize);
-            if (preg_match('/^retry-after:\s*([0-9]+)/im', $headertext, $matches)) {
-                $retryafter = (int) $matches[1];
+        $responseheaders = $curl->getResponse();
+        if (is_array($responseheaders)) {
+            foreach ($responseheaders as $headername => $headervalue) {
+                if (strcasecmp($headername, 'retry-after') === 0) {
+                    $retryval = is_array($headervalue) ? end($headervalue) : $headervalue;
+                    if (is_numeric(trim($retryval))) {
+                        $retryafter = (int) trim($retryval);
+                    }
+                    break;
+                }
             }
         }
-
-        unset($ch);
 
         return (object) [
             'status' => $status,

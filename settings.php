@@ -24,12 +24,9 @@
 
 defined('MOODLE_INTERNAL') || die();
 
-require_once($CFG->dirroot . '/local/webhookengine/classes/admin_setting_activation.php');
-
 if ($hassiteconfig || has_capability('local/webhookengine:manage', context_system::instance())) {
     $ADMIN->add('localplugins', new admin_category('local_webhookengine_cat', get_string('pluginname', 'local_webhookengine')));
 
-    
     // Manage Webhooks Link.
     $ADMIN->add('local_webhookengine_cat', new admin_externalpage(
         'local_webhookengine_manage',
@@ -49,7 +46,6 @@ if ($hassiteconfig || has_capability('local/webhookengine:manage', context_syste
     // Global Settings Page.
     $settingspage = new admin_settingpage('local_webhookengine_settings', get_string('settings', 'local_webhookengine'));
 
-    
     // Global Kill Switch.
     $settingspage->add(new admin_setting_configcheckbox(
         'local_webhookengine/killswitch',

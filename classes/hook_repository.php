@@ -44,50 +44,27 @@ class hook_repository {
     }
 
     /**
-     * Encrypt sensitive string for database storage.
+     * Encrypt sensitive string for database storage using core encryption.
      *
      * @param string $data Plain text.
      * @return string Encrypted string.
      */
     public static function encrypt_secret(string $data): string {
-        global $CFG;
-        if (class_exists('\core\encryption') && \core\encryption::is_sodium_installed() && \core\encryption::key_exists()) {
-            return \core\encryption::encrypt($data);
-        }
-        $key = substr(hash('sha256', $CFG->passwordsaltmain ?? $CFG->dbname, true), 0, 32);
-        $iv = random_bytes(16);
-        $ciphertext = openssl_encrypt($data, 'aes-256-cbc', $key, OPENSSL_RAW_DATA, $iv);
-        return 'enc:' . base64_encode($iv . $ciphertext);
+        return \core\encryption::encrypt($data);
     }
 
     /**
-     * Decrypt sensitive string from database storage.
+     * Decrypt sensitive string from database storage using core encryption.
      *
      * @param string $ciphertext Encrypted string.
      * @return string|false Plain text, or false on decryption failure.
      */
     public static function decrypt_secret(string $ciphertext) {
-        global $CFG;
-        if (str_starts_with($ciphertext, 'enc:')) {
-            $raw = base64_decode(substr($ciphertext, 4), true);
-            if ($raw !== false && strlen($raw) > 16) {
-                $iv = substr($raw, 0, 16);
-                $cipher = substr($raw, 16);
-                $key = substr(hash('sha256', $CFG->passwordsaltmain ?? $CFG->dbname, true), 0, 32);
-                $plain = openssl_decrypt($cipher, 'aes-256-cbc', $key, OPENSSL_RAW_DATA, $iv);
-                if ($plain !== false) {
-                    return $plain;
-                }
-            }
+        try {
+            return \core\encryption::decrypt($ciphertext);
+        } catch (\Throwable $e) {
+            return false;
         }
-        if (class_exists('\core\encryption') && \core\encryption::is_sodium_installed() && \core\encryption::key_exists()) {
-            try {
-                return \core\encryption::decrypt($ciphertext);
-            } catch (\Throwable $e) {
-                return false;
-            }
-        }
-        return $ciphertext;
     }
 
     /**
@@ -184,6 +161,11 @@ class hook_repository {
         global $DB, $USER;
         $now = time();
 
+        $headersval = $data->headers ?? null;
+        if (isset($data->headers) && is_array($data->headers)) {
+            $headersval = self::encrypt_headers($data->headers);
+        }
+
         $record = (object) [
             'name' => $data->name,
             'url' => $data->url,
@@ -193,7 +175,7 @@ class hook_repository {
             'events' => is_string($data->events) ? $data->events : json_encode(array_values($data->events)),
             'filters' => is_string($data->filters) ? $data->filters : json_encode($data->filters),
             'payloadopts' => is_string($data->payloadopts) ? $data->payloadopts : json_encode($data->payloadopts),
-            'headers' => (isset($data->headers) && is_array($data->headers)) ? self::encrypt_headers($data->headers) : ($data->headers ?? null),
+            'headers' => $headersval,
             'timeout' => $data->timeout ?? 10,
             'maxattempts' => $data->maxattempts ?? 9,
             'failstreak' => 0,

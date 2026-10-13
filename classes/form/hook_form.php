@@ -21,7 +21,6 @@ defined('MOODLE_INTERNAL') || die();
 use html_writer;
 use local_webhookengine\event_catalog;
 use local_webhookengine\payload_builder;
-use local_webhookengine\pro_unlock;
 use local_webhookengine\url_validator;
 use moodleform;
 
@@ -63,35 +62,22 @@ class hook_form extends moodleform {
         // Events Subscription Header.
         $mform->addElement('header', 'eventshdr', get_string('events_subscription', 'local_webhookengine'));
 
-        
-
-        // Free/Pro events: selectable in autocomplete with custom event tagging support in Pro.
-        $ispro = pro_unlock::is_pro();
-        if ($ispro) {
-            $eventoptions = event_catalog::get_event_options();
-            $placeholder = get_string('search_all_events', 'local_webhookengine');
-        } else {
-            $tiered = event_catalog::get_event_options_with_tier();
-            $eventoptions = $tiered['free'];
-            $placeholder = get_string('search_events', 'local_webhookengine');
-        }
+        // Selectable in autocomplete with custom event tagging support.
+        $eventoptions = event_catalog::get_event_options();
+        $placeholder = get_string('search_events', 'local_webhookengine');
 
         $mform->addElement('autocomplete', 'events', get_string('select_events', 'local_webhookengine'), $eventoptions, [
             'multiple' => true,
             'placeholder' => $placeholder,
-            'tags' => $ispro,
+            'tags' => true,
         ]);
         $mform->addRule('events', null, 'required', null, 'client');
 
-        if ($ispro) {
-            $hinthtml = html_writer::div(
-                get_string('custom_events_hint', 'local_webhookengine'),
-                'small text-muted mt-1 fst-italic'
-            );
-            $mform->addElement('html', $hinthtml);
-        }
-
-        
+        $hinthtml = html_writer::div(
+            get_string('custom_events_hint', 'local_webhookengine'),
+            'small text-muted mt-1 fst-italic'
+        );
+        $mform->addElement('html', $hinthtml);
 
         // Filters Header.
         $mform->addElement('header', 'filtershdr', get_string('filters', 'local_webhookengine'));
@@ -156,12 +142,6 @@ class hook_form extends moodleform {
      */
     public function validation($data, $files): array {
         $errors = parent::validation($data, $files);
-
-        // 0. Free tier hook limit validation.
-        $hook = $this->_customdata['hook'] ?? null;
-        if (empty($hook) && !pro_unlock::can_create_hook()) {
-            $errors['name'] = get_string('free_hook_limit_reached', 'local_webhookengine', pro_unlock::FREE_MAX_HOOKS);
-        }
 
         // 1. URL validation.
         if (empty($data['url'])) {

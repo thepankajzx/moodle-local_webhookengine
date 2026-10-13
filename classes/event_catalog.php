@@ -46,7 +46,7 @@ class event_catalog {
                 return self::$cachedcatalog;
             }
         } catch (\Throwable $e) {
-            // Cache not ready, fallback to in-memory generation.
+            unset($e);
         }
 
         $events = [
@@ -103,7 +103,7 @@ class event_catalog {
                 $cache->set('full_catalog', $events);
             }
         } catch (\Throwable $e) {
-            // Ignore cache write error.
+            unset($e);
         }
 
         return self::$cachedcatalog;
@@ -133,39 +133,5 @@ class event_catalog {
         }
 
         return in_array($eventname, $denylist);
-    }
-
-    /**
-     * Return whether an event requires the Pro edition.
-     *
-     * @param string $eventname Fully-qualified event class name.
-     * @return bool True if this event is Pro-only in the current edition.
-     */
-    public static function is_pro_event(string $eventname): bool {
-        if (pro_unlock::is_pro()) {
-            return false;
-        }
-        return !pro_unlock::is_event_allowed($eventname);
-    }
-
-    /**
-     * Return all event options split into free and pro groups, suitable for
-     * rendering a tiered selector in the webhook edit form.
-     *
-     * @return array[] Associative array with keys 'free' and 'pro', each
-     *                 mapping event class name => display label.
-     */
-    public static function get_event_options_with_tier(): array {
-        $all = self::get_event_options();
-        $free = [];
-        $pro = [];
-        foreach ($all as $eventname => $label) {
-            if (pro_unlock::is_event_allowed($eventname)) {
-                $free[$eventname] = $label;
-            } else {
-                $pro[$eventname] = $label . ' ' . get_string('pro_badge', 'local_webhookengine');
-            }
-        }
-        return ['free' => $free, 'pro' => $pro];
     }
 }

@@ -32,12 +32,12 @@ class url_validator {
      */
     public static function validate_for_config(string $url): ?string {
         if (strlen($url) > 2048) {
-            return 'url_too_long';
+            return 'error_invalid_url';
         }
 
         $parts = parse_url($url);
         if ($parts === false || empty($parts['host'])) {
-            return 'url_invalid';
+            return 'error_invalid_url';
         }
 
         // Reject credentials in URL.
@@ -59,31 +59,28 @@ class url_validator {
         $host = trim($parts['host'], '[]');
         $loweredhost = strtolower($host);
 
-        // Reject localhost and local domains unless plain HTTP is permitted.
-        if (!$allowhttp) {
-            $islocal = ($loweredhost === 'localhost'
-                || str_ends_with($loweredhost, '.localhost')
-                || str_ends_with($loweredhost, '.local'));
-            if ($islocal) {
-                return 'http_not_allowed';
-            }
-            if (filter_var($host, FILTER_VALIDATE_IP)) {
-                if (!filter_var($host, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE)) {
-                    return 'http_not_allowed';
-                }
+        // Reject localhost and local domains unconditionally (SSRF protection).
+        $islocal = ($loweredhost === 'localhost'
+            || str_ends_with($loweredhost, '.localhost')
+            || str_ends_with($loweredhost, '.local'));
+        if ($islocal) {
+            return 'error_blocked_url';
+        }
+
+        if (filter_var($host, FILTER_VALIDATE_IP)) {
+            if (!filter_var($host, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE)) {
+                return 'error_blocked_url';
             }
         }
 
-        // Delegate to Moodle's core curl security helper if available (strictly when plain HTTP/localhost is not permitted).
-        if (!$allowhttp) {
-            global $CFG;
-            if (!empty($CFG->libdir) && file_exists($CFG->libdir . '/filelib.php')) {
-                require_once($CFG->libdir . '/filelib.php');
-                if (class_exists('\core\files\curl_security_helper')) {
-                    $helper = new \core\files\curl_security_helper();
-                    if ($helper->url_is_blocked($url)) {
-                        return 'http_not_allowed';
-                    }
+        // Delegate to Moodle's core curl security helper unconditionally.
+        global $CFG;
+        if (!empty($CFG->libdir) && file_exists($CFG->libdir . '/filelib.php')) {
+            require_once($CFG->libdir . '/filelib.php');
+            if (class_exists('\core\files\curl_security_helper')) {
+                $helper = new \core\files\curl_security_helper();
+                if ($helper->url_is_blocked($url)) {
+                    return 'error_blocked_url';
                 }
             }
         }

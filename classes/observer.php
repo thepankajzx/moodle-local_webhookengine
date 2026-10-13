@@ -53,11 +53,6 @@ class observer {
                 return;
             }
 
-            // Edition allowlist check: silently skip pro-only events in the Free edition.
-            if (!pro_unlock::is_event_allowed($eventname)) {
-                return;
-            }
-
             // 2. O(1) Cached event map lookup (ZERO DB queries if no hook is subscribed).
             $map = hook_repository::get_event_map();
             if (empty($map) || empty($map[$eventname])) {

@@ -1,6 +1,20 @@
-﻿# Changelog
+# Changelog
 
 All notable changes to the `local_webhookengine` plugin will be documented in this file.
+
+## [1.0.1] - 2026-10-13
+
+### Changed
+- Removed all licensing restrictions and tier gates to provide full, unrestricted functionality under GNU GPL v3.
+- Migrated HTTP client to Moodle core `\curl` helper with strict SSRF protection.
+- Enforced unconditional localhost and private IP validation in URL validator.
+- Updated database message provider defaults to use integer bitmasks.
+- Switched secret encryption exclusively to Moodle core encryption subsystem.
+
+### Added
+- One-time dismissible alert for newly generated webhook signing secrets with copy-to-clipboard action.
+- Missing language strings for capabilities and message providers.
+- Moodle GPL license boilerplate docblocks in all Mustache templates.
 
 ## [1.0.0] - 2026-09-20
 

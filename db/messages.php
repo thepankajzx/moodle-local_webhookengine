@@ -28,14 +28,8 @@ $messageproviders = [
     'hookpaused' => [
         'capability' => 'local/webhookengine:manage',
         'defaults'   => [
-            'popup' => [
-                'permitted' => 1,
-                'default'   => 1,
-            ],
-            'email' => [
-                'permitted' => 1,
-                'default'   => 1,
-            ],
+            'popup' => MESSAGE_PERMITTED + MESSAGE_DEFAULT_ENABLED,
+            'email' => MESSAGE_PERMITTED + MESSAGE_DEFAULT_ENABLED,
         ],
     ],
 ];
