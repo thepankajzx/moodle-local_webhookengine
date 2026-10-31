@@ -25,6 +25,31 @@ namespace local_webhookengine;
  */
 class http_client {
     /**
+     * Get the User-Agent header value dynamically from version.php.
+     *
+     * @return string Formatted User-Agent header value.
+     */
+    public static function get_user_agent(): string {
+        static $useragent = null;
+        if ($useragent !== null) {
+            return $useragent;
+        }
+
+        $release = '1.0.3';
+        $plugin = new \stdClass();
+        $versionfile = __DIR__ . '/../version.php';
+        if (file_exists($versionfile)) {
+            include($versionfile);
+            if (!empty($plugin->release)) {
+                $release = (string) $plugin->release;
+            }
+        }
+
+        $useragent = 'EventWebhooksEngine/' . $release;
+        return $useragent;
+    }
+
+    /**
      * Send an HTTP POST request.
      *
      * @param string $url Target endpoint URL.
@@ -47,6 +72,18 @@ class http_client {
                 'duration' => 0,
                 'retryafter' => null,
             ];
+        }
+
+        // Ensure User-Agent header is present.
+        $hasuseragent = false;
+        foreach ($headers as $header) {
+            if (stripos($header, 'User-Agent:') === 0) {
+                $hasuseragent = true;
+                break;
+            }
+        }
+        if (!$hasuseragent) {
+            $headers[] = 'User-Agent: ' . self::get_user_agent();
         }
 
         // Only allow internal destinations to bypass core curl security helper if explicitly allowlisted.

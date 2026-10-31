@@ -154,7 +154,7 @@ switch ($action) {
         $signature = signer::sign($uuid, $timestamp, $testpayload, $secret);
         $headers = [
             'Content-Type: application/json',
-            'User-Agent: WebhookEngine/1.0.0',
+            'User-Agent: ' . \local_webhookengine\http_client::get_user_agent(),
             'X-Webhook-Event: webhook.test',
             'webhook-id: ' . $uuid,
             'webhook-timestamp: ' . $timestamp,

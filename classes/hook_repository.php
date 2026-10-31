@@ -24,6 +24,15 @@ namespace local_webhookengine;
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class hook_repository {
+    /** @var string Hook active status. */
+    public const STATUS_ACTIVE = 'active';
+
+    /** @var string Hook paused status. */
+    public const STATUS_PAUSED = 'paused';
+
+    /** @var string Hook deleted status. */
+    public const STATUS_DELETED = 'deleted';
+
     /**
      * Generate 32 cryptographically secure random bytes for signing secret.
      *

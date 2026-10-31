@@ -25,7 +25,19 @@ namespace local_webhookengine;
  */
 class delivery_service {
     /** @var array Base retry backoff schedule in seconds: 1m, 5m, 15m, 1h, 3h, 6h, 12h, 24h. */
-    const RETRY_SCHEDULE = [60, 300, 900, 3600, 10800, 21600, 43200, 86400];
+    public const RETRY_SCHEDULE = [60, 300, 900, 3600, 10800, 21600, 43200, 86400];
+
+    /** @var string Delivery pending status. */
+    public const STATUS_PENDING = 'pending';
+
+    /** @var string Delivery retrying status. */
+    public const STATUS_RETRYING = 'retrying';
+
+    /** @var string Delivery success status. */
+    public const STATUS_SUCCESS = 'success';
+
+    /** @var string Delivery failed status. */
+    public const STATUS_FAILED = 'failed';
 
     /**
      * Execute a delivery attempt.
@@ -176,7 +188,7 @@ class delivery_service {
 
             $headers = [
                 'Content-Type: application/json',
-                'User-Agent: WebhookEngine/1.0.0',
+                'User-Agent: ' . http_client::get_user_agent(),
                 'X-Webhook-Event: ' . $eventtype,
                 'webhook-id: ' . $delivery->uuid,
                 'webhook-timestamp: ' . $timestamp,

@@ -1,13 +1,13 @@
-# Event Webhooks (`local_webhookengine`)
+# Event Webhooks Engine (`local_webhookengine`)
 
-Event Webhooks is a high-performance, enterprise-grade generic webhook dispatcher for Moodle 4.5 to 5.2. It captures any Moodle event (Quiz completions, Course completions, User enrolments, Assignment submissions, Badges, Forum discussions, and more) and reliably delivers cryptographically signed JSON payloads to any HTTPS destination, including n8n, Zapier, Make, custom APIs, and CRMs.
+Event Webhooks Engine is a high-performance, enterprise-grade generic webhook dispatcher for Moodle 4.5 to 5.2. It captures any Moodle event (Quiz completions, Course completions, User enrolments, Assignment submissions, Badges, Forum discussions, and more) and reliably delivers cryptographically signed JSON payloads to any HTTPS destination, including n8n, Zapier, Make, custom APIs, and CRMs.
 
 ---
 
 ## 1. Features
 
 - **Any Moodle Event:** Subscribe to any core or plugin event directly from the admin UI.
-- **Asynchronous & Non-Blocking:** 0 DB queries on non-matching events; matching events are committed to a resilient queue and dispatched in the background. Students and teachers never experience request delays.
+- **Asynchronous & Non-Blocking:** 0 DB queries on non-matching events. For matching events, the event observer inserts 2 database records (`{local_webhookengine_delivery}` and `{task_adhoc}`) without synchronous HTTP network dispatch, leaving all outbound delivery to background adhoc cron workers. Students and teachers never experience external HTTP latency.
 - **Standard Webhooks Compatible:** Complies with the [Standard Webhooks specification](https://www.standardwebhooks.com/) (`webhook-id`, `webhook-timestamp`, `webhook-signature` with HMAC-SHA256).
 - **Flexible Scope & Filters:** Filter events by Course IDs, Course Category hierarchy (with subcategory support), or exclude automated/guest activity.
 - **Payload Customization:** Opt in to include user details, email addresses, course metadata, and raw event `other` data. Optionally supply a custom JSON template with safe parameter replacement.
@@ -31,7 +31,7 @@ Event Webhooks is a high-performance, enterprise-grade generic webhook dispatche
 ### Method A: Admin ZIP Upload
 1. Log in to your Moodle site as an Administrator.
 2. Navigate to **Site administration > Plugins > Install plugins**.
-3. Upload the plugin install ZIP (e.g. `local_webhookengine_v1.0.2_moodle_org_community_free.zip`) and follow the on-screen upgrade prompts.
+3. Upload the plugin install ZIP (e.g. `local_webhookengine_v1.0.3_community_free.zip`) and follow the on-screen upgrade prompts.
 
 ### Method B: Manual Git / Directory Extraction
 1. Extract the `webhookengine` folder into your Moodle installation's `local/` directory:
@@ -45,7 +45,7 @@ Event Webhooks is a high-performance, enterprise-grade generic webhook dispatche
 
 ## 4. Standard Payload Structure (Schema 1)
 
-When an event occurs, Webhook Engine dispatches a JSON envelope formatted as follows:
+When an event occurs, Event Webhooks Engine dispatches a JSON envelope formatted as follows:
 
 ```json
 {
