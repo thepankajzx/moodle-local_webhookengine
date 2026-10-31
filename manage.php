@@ -48,40 +48,6 @@ $totaldrops = array_sum($allhookdrops);
 
 echo $renderer->render_health_panel($queuedcount, $oldestage, $killswitch, $totaldrops);
 
-// Check for newly created hook signing secret to display one-time.
-$createdid = optional_param('created', 0, PARAM_INT);
-if ($createdid > 0) {
-    $sessionkey = 'local_webhookengine_new_secret_' . $createdid;
-    if (!empty($SESSION->$sessionkey)) {
-        $newsecret = $SESSION->$sessionkey;
-        unset($SESSION->$sessionkey);
-
-        $copybtn = html_writer::tag('button', get_string('copy_secret', 'local_webhookengine'), [
-            'type' => 'button',
-            'class' => 'btn btn-sm btn-outline-dark ms-2',
-            'onclick' => 'navigator.clipboard.writeText(' . json_encode($newsecret) . ').then(function() { alert(' .
-                json_encode(get_string('secret_copied', 'local_webhookengine')) . '); });',
-        ]);
-
-        $secretbox = html_writer::div(
-            html_writer::tag('strong', get_string('signing_secret', 'local_webhookengine') . ': ') .
-            html_writer::tag('code', s($newsecret), ['class' => 'p-1 bg-light rounded text-monospace']) .
-            $copybtn,
-            'd-flex align-items-center flex-wrap my-2'
-        );
-
-        $secretnotice = html_writer::div(
-            html_writer::tag('h5', get_string('new_secret_title', 'local_webhookengine'), ['class' => 'alert-heading']) .
-            html_writer::tag('p', get_string('new_secret_warning', 'local_webhookengine'), ['class' => 'mb-2']) .
-            $secretbox,
-            'alert alert-success alert-dismissible fade show mb-4',
-            ['role' => 'alert']
-        );
-
-        echo $secretnotice;
-    }
-}
-
 // Hooks Table.
 $hooks = $DB->get_records('local_webhookengine_hook', [], 'id ASC');
 

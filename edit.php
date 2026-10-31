@@ -115,12 +115,16 @@ if ($mform->is_cancelled()) {
         $newid = hook_repository::create_hook($record, $rawsecret);
         $whsec = hook_repository::format_whsec($rawsecret);
 
-        // Store one-time notification message with the secret.
-        $sessionkey = 'local_webhookengine_new_secret_' . $newid;
-        $SESSION->$sessionkey = $whsec;
+        $token = bin2hex(random_bytes(16));
+        $cache = \cache::make('local_webhookengine', 'ratelimit');
+        $cache->set('secret_reveal_' . $token, [
+            'hookid' => $newid,
+            'secret' => $whsec,
+            'userid' => $USER->id,
+        ]);
 
         redirect(
-            new moodle_url('/local/webhookengine/manage.php', ['created' => $newid]),
+            new moodle_url('/local/webhookengine/secret_reveal.php', ['id' => $newid, 'token' => $token]),
             get_string('hook_created_success', 'local_webhookengine'),
             null,
             \core\output\notification::NOTIFY_SUCCESS
@@ -134,10 +138,24 @@ if ($mform->is_cancelled()) {
             'events' => $events,
             'filters' => $filters,
             'payloadopts' => $payloadopts,
-            'headers' => !empty($headers) ? $headers : null,
             'timeout' => $data->timeout,
             'maxattempts' => $data->maxattempts,
         ];
+
+        if (!empty($data->clearheaders)) {
+            $record->clearheaders = true;
+        } else {
+            $hasplaceholder = false;
+            foreach ($headers as $v) {
+                if (trim($v) === '(configured)') {
+                    $hasplaceholder = true;
+                    break;
+                }
+            }
+            if (!$hasplaceholder) {
+                $record->headers = $headers;
+            }
+        }
 
         hook_repository::update_hook($hookid, $record);
 
@@ -177,7 +195,7 @@ if ($hook && !$mform->is_submitted()) {
         if (is_array($customheaders)) {
             $headerlines = [];
             foreach ($customheaders as $k => $v) {
-                $headerlines[] = "$k: $v";
+                $headerlines[] = "$k: (configured)";
             }
             $toform->customheaders = implode("\n", $headerlines);
         }

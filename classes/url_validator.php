@@ -86,6 +86,51 @@ class url_validator {
     }
 
     /**
+     * Check if a destination domain is permitted by the optional destination domain allowlist.
+     *
+     * @param string $host Target hostname or IP.
+     * @return bool True if permitted, false otherwise.
+     */
+    public static function is_destination_domain_allowed(string $host): bool {
+        $allowedconfig = (string) get_config('local_webhookengine', 'alloweddestinationdomains');
+        if (trim($allowedconfig) === '') {
+            return true; // No restriction configured.
+        }
+
+        // Internal hosts allowlisted via allowedinternalhosts are also permitted.
+        if (self::is_host_or_ip_allowlisted($host)) {
+            return true;
+        }
+
+        $lines = preg_split('/[\r\n,]+/', $allowedconfig);
+        $cleanlines = [];
+        foreach ($lines as $line) {
+            $trimmed = trim(explode('#', $line)[0]);
+            if ($trimmed !== '') {
+                $cleanlines[] = $trimmed;
+            }
+        }
+
+        if (empty($cleanlines)) {
+            return true;
+        }
+
+        $loweredhost = strtolower(trim($host, '[]'));
+
+        foreach ($cleanlines as $entry) {
+            $loweredentry = strtolower($entry);
+            if (\core\ip_utils::is_domain_in_allowed_list($loweredhost, [$loweredentry])) {
+                return true;
+            }
+            if (strcasecmp($loweredhost, $loweredentry) === 0) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
      * Determine if an IP address belongs to loopback, private, link-local, or cloud metadata ranges.
      *
      * @param string $ip IPv4 or IPv6 address.
@@ -234,6 +279,11 @@ class url_validator {
         $host = trim($parts['host'], '[]');
         $loweredhost = strtolower($host);
 
+        // Enforce destination domain allowlist if configured.
+        if (!self::is_destination_domain_allowed($loweredhost)) {
+            return 'error_domain_not_allowed';
+        }
+
         // Check if destination is explicitly authorized by internal allowlist.
         if (self::is_host_or_ip_allowlisted($loweredhost)) {
             return null;
@@ -357,6 +407,17 @@ class url_validator {
         $host = trim($parts['host'], '[]');
         $loweredhost = strtolower($host);
         $port = !empty($parts['port']) ? (int) $parts['port'] : ($scheme === 'https' ? 443 : 80);
+
+        // Enforce destination domain allowlist if configured.
+        if (!self::is_destination_domain_allowed($loweredhost)) {
+            return [
+                'valid' => false,
+                'error' => 'error_domain_not_allowed',
+                'ip' => null,
+                'resolve_entry' => null,
+                'is_internal_allowed' => false,
+            ];
+        }
 
         // Check internal allowlist.
         $isinternal = self::is_host_or_ip_allowlisted($loweredhost);

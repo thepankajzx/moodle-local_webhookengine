@@ -73,6 +73,17 @@ if ($hassiteconfig || has_capability('local/webhookengine:manage', context_syste
         5
     ));
 
+    // Destination Domain Allowlist.
+    $settingspage->add(new admin_setting_configtextarea(
+        'local_webhookengine/alloweddestinationdomains',
+        get_string('setting_alloweddestinationdomains', 'local_webhookengine'),
+        get_string('setting_alloweddestinationdomains_desc', 'local_webhookengine'),
+        '',
+        PARAM_RAW,
+        60,
+        5
+    ));
+
     // Default Request Timeout.
     $settingspage->add(new admin_setting_configtext(
         'local_webhookengine/defaulttimeout',

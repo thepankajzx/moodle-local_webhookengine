@@ -123,6 +123,11 @@ class hook_form extends moodleform {
         $mform->setType('customheaders', PARAM_RAW);
         $mform->addHelpButton('customheaders', 'custom_headers', 'local_webhookengine');
 
+        if ($hook && !empty($hook->headers)) {
+            $mform->addElement('advcheckbox', 'clearheaders', get_string('clear_headers', 'local_webhookengine'));
+            $mform->setDefault('clearheaders', 0);
+        }
+
         $mform->addElement('text', 'timeout', get_string('timeout_seconds', 'local_webhookengine'), ['size' => '5']);
         $mform->setType('timeout', PARAM_INT);
         $mform->setDefault('timeout', 10);

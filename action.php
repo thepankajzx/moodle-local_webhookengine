@@ -87,10 +87,19 @@ switch ($action) {
             ]);
             $event->trigger();
 
-            \core\notification::add(
-                get_string('secret_rotated_alert', 'local_webhookengine', s($whsec)),
-                \core\notification::WARNING
-            );
+            $token = bin2hex(random_bytes(16));
+            $cache = \cache::make('local_webhookengine', 'ratelimit');
+            $cache->set('secret_reveal_' . $token, [
+                'hookid' => $id,
+                'secret' => $whsec,
+                'userid' => $USER->id,
+            ]);
+
+            redirect(new moodle_url('/local/webhookengine/secret_reveal.php', [
+                'id' => $id,
+                'token' => $token,
+                'rotated' => 1,
+            ]));
         }
         redirect(new moodle_url('/local/webhookengine/manage.php'));
         break;

@@ -30,7 +30,7 @@ $capabilities = [
         'captype'      => 'write',
         'contextlevel' => CONTEXT_SYSTEM,
         'archetypes'   => [
-            'manager' => CAP_ALLOW,
+            // Strictly restricted to site administrators by default.
         ],
     ],
     'local/webhookengine:viewlogs' => [
@@ -38,7 +38,7 @@ $capabilities = [
         'captype'      => 'read',
         'contextlevel' => CONTEXT_SYSTEM,
         'archetypes'   => [
-            'manager' => CAP_ALLOW,
+            // Strictly restricted to site administrators by default.
         ],
     ],
     'local/webhookengine:replay' => [
@@ -46,7 +46,7 @@ $capabilities = [
         'captype'      => 'write',
         'contextlevel' => CONTEXT_SYSTEM,
         'archetypes'   => [
-            'manager' => CAP_ALLOW,
+            // Strictly restricted to site administrators by default.
         ],
     ],
     'local/webhookengine:exportlogs' => [
@@ -54,7 +54,7 @@ $capabilities = [
         'captype'      => 'read',
         'contextlevel' => CONTEXT_SYSTEM,
         'archetypes'   => [
-            'manager' => CAP_ALLOW,
+            // Strictly restricted to site administrators by default.
         ],
     ],
     'local/webhookengine:exportpersonaldata' => [
