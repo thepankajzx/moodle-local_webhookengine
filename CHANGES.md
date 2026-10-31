@@ -12,9 +12,12 @@ All notable changes to the `local_webhookengine` plugin will be documented in th
 - Added automated orphaned delivery sweeper in `task\check_health` to rescue stuck overdue deliveries without relying on manual intervention.
 - Exposed live drop counters in the administration health panel and per-hook status badges in `manage.php`.
 - Registered `ratelimit_alert` message provider notifying site administrators when an endpoint reaches rate limit thresholds.
-- Comprehensive PHPUnit test coverage (`tests/drop_ledger_test.php`, `tests/hook_repository_test.php`, `tests/delivery_replay_test.php`) and automated multi-environment GitHub Actions CI matrix (`.github/workflows/ci.yml`).
+- Introduced dedicated internal network and host allowlist setting (`allowedinternalhosts`) supporting CIDR subnets, exact IPs, and wildcard domain patterns (`*.internal`).
+- Comprehensive PHPUnit test coverage (`tests/url_validator_test.php`, `tests/drop_ledger_test.php`, `tests/hook_repository_test.php`, `tests/delivery_replay_test.php`) and automated multi-environment GitHub Actions CI matrix (`.github/workflows/ci.yml`).
 
 ### Fixed
+- Decoupled plain HTTP development toggle (`allowinsecurehttp`) from SSRF network defense. Enabling plain HTTP no longer disables private IP and loopback blocks or passes blanket `ignoresecurity=true` to Moodle cURL.
+- Defeated DNS rebinding TOCTOU attacks via pre-flight DNS resolution, anti-private-range verification across all resolved addresses, and connection pinning using `CURLOPT_RESOLVE`.
 - Fixed critical header-wipe regression where pausing or resuming a webhook deleted stored encrypted custom authorization headers. Introduced surgical `hook_repository::set_hook_status()` method to guarantee credential isolation during lifecycle state transitions.
 - Hardened webhook replay safety: strictly reject replaying deliveries whose payload has been purged under GDPR data retention policies (`payload_purged_cannot_replay`), preventing dispatch of synthetic `{}` empty bodies over the network.
 - Enhanced replay idempotency: manual replays reset attempt counters to 0 while preserving RFC 4122 delivery UUIDs for downstream deduplication.
