@@ -17,9 +17,10 @@ All notable changes to the `local_webhookengine` plugin will be documented in th
 - Secure, non-cacheable one-time secret presentation page (`secret_reveal.php`) with HTTP `Cache-Control: no-store` headers and single-use cache token destruction, preventing signing secret leakage in browser history, proxy caches, or database session logs.
 - Write-only custom header masking in configuration forms (`Header-Name: (configured)`), preventing plaintext exfiltration of API keys and bearer tokens through HTML markup or browser inspections.
 - Explicit `clearheaders` option allowing administrators to securely purge stored credentials.
-- Comprehensive PHPUnit test coverage (`tests/url_validator_test.php`, `tests/access_control_test.php`, `tests/drop_ledger_test.php`, `tests/hook_repository_test.php`, `tests/delivery_replay_test.php`) and automated multi-environment GitHub Actions CI matrix (`.github/workflows/ci.yml`).
+- Comprehensive PHPUnit test coverage (`tests/url_validator_test.php`, `tests/access_control_test.php`, `tests/template_fail_closed_test.php`, `tests/drop_ledger_test.php`, `tests/hook_repository_test.php`, `tests/delivery_replay_test.php`) and automated multi-environment GitHub Actions CI matrix (`.github/workflows/ci.yml`).
 
 ### Fixed
+- Enforced strict template fail-closed guarantees: if a custom JSON template cannot be parsed or renders invalid JSON at runtime, delivery execution immediately fails (`template_invalid`) with zero network dispatch. Completely eliminated the silent fail-open fallback to default full envelopes, preventing accidental exfiltration of sensitive student and course data.
 - Hardened access control defaults in `db/access.php`: removed default capability grants (`manager => CAP_ALLOW`) across `manage`, `viewlogs`, `replay`, `exportlogs`, and `exportpersonaldata`, restricting webhook configuration, credential handling, and audit export strictly to Site Administrators by default.
 - Eliminated signing secret leakage via `\core\notification` session queues during webhook creation and rotation.
 - Decoupled plain HTTP development toggle (`allowinsecurehttp`) from SSRF network defense. Enabling plain HTTP no longer disables private IP and loopback blocks or passes blanket `ignoresecurity=true` to Moodle cURL.
