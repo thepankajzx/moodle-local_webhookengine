@@ -143,19 +143,24 @@ class hook_repository {
     }
 
     /**
-     * Rebuild and return cached event map (eventname => array of hook IDs).
+     * Rebuild and return cached event map (eventname => array of hook entry arrays).
      *
-     * @return array Mapping of event name to list of hook IDs.
+     * Each entry contains ['id' => int, 'status' => string ('active'|'paused')].
+     *
+     * @return array Mapping of event name to list of hook entry arrays.
      */
     public static function get_event_map(): array {
         $cache = \cache::make('local_webhookengine', 'eventmap');
-        $cached = $cache->get('map');
+        $cached = $cache->get('map_v2');
         if ($cached !== false && is_array($cached)) {
             return $cached;
         }
 
         global $DB;
-        $records = $DB->get_records('local_webhookengine_hook', ['enabled' => 1, 'status' => 'active']);
+        $records = $DB->get_records_select(
+            'local_webhookengine_hook',
+            "enabled = 1 AND status IN ('active', 'paused')"
+        );
         $map = [];
 
         foreach ($records as $hook) {
@@ -164,13 +169,16 @@ class hook_repository {
                 foreach ($events as $eventname) {
                     $eventname = self::normalize_event_name((string) $eventname);
                     if ($eventname !== '') {
-                        $map[$eventname][] = (int) $hook->id;
+                        $map[$eventname][] = [
+                            'id' => (int) $hook->id,
+                            'status' => (string) $hook->status,
+                        ];
                     }
                 }
             }
         }
 
-        $cache->set('map', $map);
+        $cache->set('map_v2', $map);
         return $map;
     }
 
@@ -260,13 +268,10 @@ class hook_repository {
             $record->status = $data->status;
         }
 
-        if (property_exists($data, 'headers')) {
-            if (is_array($data->headers)) {
-                $record->headers = !empty($data->headers) ? self::encrypt_headers($data->headers) : null;
-            } else if (is_string($data->headers) && $data->headers !== '') {
-                // Preserve existing encrypted ciphertext string untouched.
-                $record->headers = $data->headers;
-            }
+        if (isset($data->clearheaders) && !empty($data->clearheaders)) {
+            $record->headers = null;
+        } else if (property_exists($data, 'headers') && is_array($data->headers)) {
+            $record->headers = !empty($data->headers) ? self::encrypt_headers($data->headers) : null;
         }
 
         $res = $DB->update_record('local_webhookengine_hook', $record);
@@ -280,9 +285,13 @@ class hook_repository {
      * @param int $id Hook ID.
      * @param string $status Target status ('active', 'paused').
      * @return bool True on success.
+     * @throws \coding_exception If status is invalid.
      */
     public static function set_hook_status(int $id, string $status): bool {
         global $DB;
+        if (!in_array($status, ['active', 'paused'])) {
+            throw new \coding_exception('Invalid webhook status: ' . s($status));
+        }
         $now = time();
         $record = (object) [
             'id' => $id,
@@ -323,8 +332,141 @@ class hook_repository {
     public static function delete_hook(int $id): bool {
         global $DB;
         $DB->delete_records('local_webhookengine_delivery', ['hookid' => $id]);
+        $DB->delete_records('local_webhookengine_drop_ledger', ['hookid' => $id]);
         $res = $DB->delete_records('local_webhookengine_hook', ['id' => $id]);
         self::invalidate_event_map();
         return $res;
+    }
+
+    /**
+     * Record dropped events in the aggregated drop ledger.
+     *
+     * Uses atomic slot-based sharding (slots 0-7) to prevent DB row lock contention.
+     *
+     * @param int $hookid Hook database ID.
+     * @param string $reason Reason code from local_webhookengine\reasons.
+     * @param int $count Number of events dropped.
+     */
+    public static function record_drop(int $hookid, string $reason, int $count = 1): void {
+        global $DB;
+
+        if ($hookid <= 0 || $count <= 0) {
+            return;
+        }
+
+        $now = time();
+        $minutetime = (int) floor($now / 60) * 60;
+        $slot = random_int(0, 7);
+
+        try {
+            $record = (object) [
+                'hookid' => $hookid,
+                'reason' => $reason,
+                'minutetime' => $minutetime,
+                'slot' => $slot,
+                'dropcount' => $count,
+                'timemodified' => $now,
+            ];
+            $DB->insert_record('local_webhookengine_drop_ledger', $record);
+        } catch (\dml_exception $e) {
+            // Row already exists for (hookid, reason, minutetime, slot), atomically increment.
+            try {
+                $sql = "UPDATE {local_webhookengine_drop_ledger}
+                           SET dropcount = dropcount + :inc,
+                               timemodified = :now
+                         WHERE hookid = :hookid
+                           AND reason = :reason
+                           AND minutetime = :minutetime
+                           AND slot = :slot";
+                $DB->execute($sql, [
+                    'inc' => $count,
+                    'now' => $now,
+                    'hookid' => $hookid,
+                    'reason' => $reason,
+                    'minutetime' => $minutetime,
+                    'slot' => $slot,
+                ]);
+            } catch (\Throwable $ex) {
+                debugging('local_webhookengine: failed to update drop ledger: ' . $ex->getMessage(), DEBUG_DEVELOPER);
+            }
+        } catch (\Throwable $e) {
+            debugging('local_webhookengine: failed to record drop ledger: ' . $e->getMessage(), DEBUG_DEVELOPER);
+        }
+    }
+
+    /**
+     * Get aggregated drop count summary grouped by reason for a specific hook.
+     *
+     * @param int $hookid Hook ID.
+     * @param int $since Minimum minutetime timestamp (0 for all time).
+     * @return array Associative array of reason => total count.
+     */
+    public static function get_hook_drop_summary(int $hookid, int $since = 0): array {
+        global $DB;
+
+        $sql = "SELECT reason, SUM(dropcount) AS total
+                  FROM {local_webhookengine_drop_ledger}
+                 WHERE hookid = :hookid AND minutetime >= :since
+              GROUP BY reason";
+        $records = $DB->get_records_sql($sql, ['hookid' => $hookid, 'since' => $since]);
+        $summary = [];
+        foreach ($records as $r) {
+            $summary[$r->reason] = (int) $r->total;
+        }
+        return $summary;
+    }
+
+    /**
+     * Get total dropped events for a specific hook.
+     *
+     * @param int $hookid Hook ID.
+     * @param int $since Minimum minutetime timestamp (0 for all time).
+     * @return int Total drops.
+     */
+    public static function get_hook_total_drops(int $hookid, int $since = 0): int {
+        global $DB;
+
+        $sql = "SELECT SUM(dropcount) AS total
+                  FROM {local_webhookengine_drop_ledger}
+                 WHERE hookid = :hookid AND minutetime >= :since";
+        $total = $DB->get_field_sql($sql, ['hookid' => $hookid, 'since' => $since]);
+        return (int) $total;
+    }
+
+    /**
+     * Get drop count for a specific hook and reason.
+     *
+     * @param int $hookid Hook ID.
+     * @param string $reason Reason code.
+     * @param int $since Minimum minutetime timestamp (0 for all time).
+     * @return int Drop count for this reason.
+     */
+    public static function get_hook_drop_count_by_reason(int $hookid, string $reason, int $since = 0): int {
+        global $DB;
+
+        $sql = "SELECT SUM(dropcount) AS total
+                  FROM {local_webhookengine_drop_ledger}
+                 WHERE hookid = :hookid AND reason = :reason AND minutetime >= :since";
+        $total = $DB->get_field_sql($sql, ['hookid' => $hookid, 'reason' => $reason, 'since' => $since]);
+        return (int) $total;
+    }
+
+    /**
+     * Get total drop counts for all hooks in a single grouped query.
+     *
+     * @return array Associative array of hookid => total drops.
+     */
+    public static function get_all_hooks_total_drops(): array {
+        global $DB;
+
+        $sql = "SELECT hookid, SUM(dropcount) AS total
+                  FROM {local_webhookengine_drop_ledger}
+              GROUP BY hookid";
+        $records = $DB->get_records_sql($sql);
+        $result = [];
+        foreach ($records as $r) {
+            $result[(int) $r->hookid] = (int) $r->total;
+        }
+        return $result;
     }
 }

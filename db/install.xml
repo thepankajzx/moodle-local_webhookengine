@@ -62,5 +62,23 @@
         <INDEX NAME="status_timecreated" UNIQUE="false" FIELDS="status, timecreated"/>
       </INDEXES>
     </TABLE>
+    <TABLE NAME="local_webhookengine_drop_ledger" COMMENT="Aggregated per-minute dropped event ledger">
+      <FIELDS>
+        <FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="true"/>
+        <FIELD NAME="hookid" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="false"/>
+        <FIELD NAME="reason" TYPE="char" LENGTH="32" NOTNULL="true" SEQUENCE="false"/>
+        <FIELD NAME="minutetime" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="false"/>
+        <FIELD NAME="slot" TYPE="int" LENGTH="2" NOTNULL="true" DEFAULT="0" SEQUENCE="false"/>
+        <FIELD NAME="dropcount" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="1" SEQUENCE="false"/>
+        <FIELD NAME="timemodified" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="false"/>
+      </FIELDS>
+      <KEYS>
+        <KEY NAME="primary" TYPE="primary" FIELDS="id"/>
+      </KEYS>
+      <INDEXES>
+        <INDEX NAME="hook_reason_minute_slot" UNIQUE="true" FIELDS="hookid, reason, minutetime, slot"/>
+        <INDEX NAME="minutetime" UNIQUE="false" FIELDS="minutetime"/>
+      </INDEXES>
+    </TABLE>
   </TABLES>
 </XMLDB>

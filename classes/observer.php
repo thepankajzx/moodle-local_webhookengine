@@ -33,11 +33,8 @@ class observer {
         global $DB;
 
         try {
-            // 1. Return immediately if during initial install or global kill switch is active.
+            // 1. Return immediately during initial install.
             if (during_initial_install()) {
-                return;
-            }
-            if ((bool) get_config('local_webhookengine', 'killswitch')) {
                 return;
             }
 
@@ -59,16 +56,44 @@ class observer {
                 return;
             }
 
-            $hookids = $map[$eventname];
-            if (empty($hookids)) {
+            $hookentries = $map[$eventname];
+            if (empty($hookentries)) {
+                return;
+            }
+
+            // 3. Global kill switch check evaluated after map match to record drops.
+            if ((bool) get_config('local_webhookengine', 'killswitch')) {
+                foreach ($hookentries as $entry) {
+                    $entryid = is_array($entry) ? (int) $entry['id'] : (int) $entry;
+                    if ($entryid > 0) {
+                        hook_repository::record_drop($entryid, reasons::KILL_SWITCH);
+                    }
+                }
                 return;
             }
 
             $courseid = $event->courseid ? (int) $event->courseid : null;
             $userid = $event->userid ? (int) $event->userid : null;
 
-            // 3. Process each matching hook.
-            foreach ($hookids as $hookid) {
+            // 4. Process each matching hook.
+            foreach ($hookentries as $entry) {
+                if (is_array($entry)) {
+                    $hookid = (int) $entry['id'];
+                    $hookstatus = (string) ($entry['status'] ?? 'active');
+                } else {
+                    $hookid = (int) $entry;
+                    $hookstatus = 'active';
+                }
+
+                if ($hookid <= 0) {
+                    continue;
+                }
+
+                if ($hookstatus === 'paused') {
+                    hook_repository::record_drop($hookid, reasons::HOOK_PAUSED);
+                    continue;
+                }
+
                 $hook = hook_repository::get_hook($hookid);
                 if (!$hook || empty($hook->enabled) || $hook->status !== 'active') {
                     continue;
@@ -79,14 +104,23 @@ class observer {
                     continue;
                 }
 
+                // Backlog check: protect shared queue from noisy neighbor starvation.
+                if (rate_limiter::is_hook_backlog_exceeded($hook->id)) {
+                    hook_repository::record_drop($hook->id, reasons::HOOK_BACKLOG_EXCEEDED);
+                    continue;
+                }
+
                 // Rate limiting & global storm guard check.
                 $ratecap = (int) get_config('local_webhookengine', 'ratecapperhook') ?: 600;
                 $queuemax = (int) get_config('local_webhookengine', 'globalqueuemax') ?: 50000;
 
                 if (!rate_limiter::check_and_increment_hook($hook->id, $ratecap)) {
+                    hook_repository::record_drop($hook->id, reasons::RATE_LIMITED);
+                    rate_limiter::trigger_rate_limit_alert($hook);
                     continue;
                 }
                 if (!rate_limiter::check_global_queue_guard($queuemax)) {
+                    hook_repository::record_drop($hook->id, reasons::QUEUE_OVERLOAD);
                     continue;
                 }
 
@@ -145,8 +179,11 @@ class observer {
                 \core\task\manager::queue_adhoc_task($task);
             }
         } catch (\Throwable $e) {
-            // Graceful error isolation: event dispatch failure must never break student or user activity.
-            debugging('local_webhookengine: observer error: ' . get_class($e), DEBUG_DEVELOPER);
+            // Graceful error isolation: record observer error in drop ledger if target hook was identified.
+            if (isset($hook) && is_object($hook) && !empty($hook->id)) {
+                hook_repository::record_drop((int) $hook->id, reasons::OBSERVER_ERROR);
+            }
+            debugging('local_webhookengine: observer error: ' . $e->getMessage(), DEBUG_DEVELOPER);
         }
     }
 }

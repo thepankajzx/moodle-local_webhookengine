@@ -43,8 +43,10 @@ $queuedcount = $DB->count_records('local_webhookengine_delivery', ['status' => '
 $oldestqueued = $DB->get_field_select('local_webhookengine_delivery', 'MIN(timecreated)', "status = 'queued'");
 $oldestage = $oldestqueued ? (time() - $oldestqueued) : null;
 $killswitch = (bool) get_config('local_webhookengine', 'killswitch');
+$allhookdrops = \local_webhookengine\hook_repository::get_all_hooks_total_drops();
+$totaldrops = array_sum($allhookdrops);
 
-echo $renderer->render_health_panel($queuedcount, $oldestage, $killswitch);
+echo $renderer->render_health_panel($queuedcount, $oldestage, $killswitch, $totaldrops);
 
 // Check for newly created hook signing secret to display one-time.
 $createdid = optional_param('created', 0, PARAM_INT);
@@ -125,6 +127,13 @@ if (empty($hooks)) {
             $statusdisplay .= ' ' . html_writer::span(
                 get_string('fail_streak_badge', 'local_webhookengine', $hook->failstreak),
                 'badge badge-warning bg-warning text-dark'
+            );
+        }
+        $hookdrops = $allhookdrops[$hook->id] ?? 0;
+        if ($hookdrops > 0) {
+            $statusdisplay .= ' ' . html_writer::span(
+                get_string('drops_badge', 'local_webhookengine', $hookdrops),
+                'badge badge-danger bg-danger text-white'
             );
         }
 

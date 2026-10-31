@@ -92,5 +92,24 @@ class purge_logs extends \core\task\scheduled_task {
             [$insql, $inparams] = $DB->get_in_or_equal($ids, SQL_PARAMS_NAMED);
             $DB->execute("DELETE FROM {local_webhookengine_delivery} WHERE id $insql", $inparams);
         }
+
+        // 3. Delete aggregated drop ledger records older than log retention threshold.
+        while (time() < $timelimit) {
+            $records = $DB->get_records_select(
+                'local_webhookengine_drop_ledger',
+                'minutetime < :cutoff',
+                ['cutoff' => $logcutoff],
+                'id ASC',
+                'id',
+                0,
+                500
+            );
+            if (empty($records)) {
+                break;
+            }
+            $ids = array_keys($records);
+            [$insql, $inparams] = $DB->get_in_or_equal($ids, SQL_PARAMS_NAMED);
+            $DB->execute("DELETE FROM {local_webhookengine_drop_ledger} WHERE id $insql", $inparams);
+        }
     }
 }

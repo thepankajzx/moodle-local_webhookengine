@@ -27,6 +27,8 @@ class rate_limiter {
     /**
      * Check if a hook has exceeded its per-minute delivery limit and increment counter.
      *
+     * Fails open if cache backend encounters an exception.
+     *
      * @param int $hookid Hook ID.
      * @param int|null $ratecap Optional per-minute limit.
      * @return bool True if allowed, false if limit exceeded.
@@ -36,18 +38,24 @@ class rate_limiter {
             $ratecap = (int) get_config('local_webhookengine', 'ratecapperhook') ?: 600;
         }
 
-        $currentminute = (int) (time() / 60);
-        $key = 'rl_' . $hookid . '_' . $currentminute;
+        try {
+            $currentminute = (int) (time() / 60);
+            $key = 'rl_' . $hookid . '_' . $currentminute;
 
-        $cache = \cache::make('local_webhookengine', 'ratelimit');
-        $count = (int) $cache->get($key);
+            $cache = \cache::make('local_webhookengine', 'ratelimit');
+            $count = (int) $cache->get($key);
 
-        if ($count >= $ratecap) {
-            return false;
+            if ($count >= $ratecap) {
+                return false;
+            }
+
+            $cache->set($key, $count + 1);
+            return true;
+        } catch (\Throwable $e) {
+            // Fail open: cache backend degradation must not abort student activity.
+            debugging('local_webhookengine: rate_limiter cache error: ' . $e->getMessage(), DEBUG_DEVELOPER);
+            return true;
         }
-
-        $cache->set($key, $count + 1);
-        return true;
     }
 
     /**
@@ -61,7 +69,45 @@ class rate_limiter {
     }
 
     /**
+     * Check if a specific hook has exceeded its backlog limit of retrying deliveries.
+     *
+     * Protects the shared queue from noisy neighbor starvation when one target endpoint is down.
+     *
+     * @param int $hookid Hook ID.
+     * @param int $limit Maximum allowed retrying deliveries for a single hook before throttling.
+     * @return bool True if backlog limit is exceeded, false otherwise.
+     */
+    public static function is_hook_backlog_exceeded(int $hookid, int $limit = 2000): bool {
+        if ($hookid <= 0) {
+            return false;
+        }
+
+        try {
+            $cache = \cache::make('local_webhookengine', 'ratelimit');
+            $key = 'backlog_' . $hookid;
+            $count = $cache->get($key);
+
+            if ($count === false) {
+                global $DB;
+                $count = $DB->count_records('local_webhookengine_delivery', [
+                    'hookid' => $hookid,
+                    'status' => 'retrying',
+                ]);
+                $cache->set($key, $count);
+            }
+
+            return ((int) $count) >= $limit;
+        } catch (\Throwable $e) {
+            // Fail open: DB or cache hiccup must not discard valid events.
+            debugging('local_webhookengine: backlog check error: ' . $e->getMessage(), DEBUG_DEVELOPER);
+            return false;
+        }
+    }
+
+    /**
      * Check if the global pending queue size has exceeded maximum capacity.
+     *
+     * Accurately aggregates both queued and retrying rows to avoid stale counts.
      *
      * @param int|null $maxqueue Optional global queue limit.
      * @return bool True if safe to enqueue, false if queue overloaded.
@@ -71,16 +117,69 @@ class rate_limiter {
             $maxqueue = (int) get_config('local_webhookengine', 'globalqueuemax') ?: 50000;
         }
 
-        $cache = \cache::make('local_webhookengine', 'ratelimit');
-        $cachedcount = $cache->get('global_queue_count');
+        try {
+            $cache = \cache::make('local_webhookengine', 'ratelimit');
+            $cachedcount = $cache->get('global_queue_count');
 
-        if ($cachedcount === false) {
-            global $DB;
-            $count = $DB->count_records('local_webhookengine_delivery', ['status' => 'queued']);
-            $cache->set('global_queue_count', $count);
-            return $count < $maxqueue;
+            if ($cachedcount === false) {
+                global $DB;
+                $count = $DB->count_records_select(
+                    'local_webhookengine_delivery',
+                    "status IN ('queued', 'retrying')"
+                );
+                $cache->set('global_queue_count', $count);
+                return $count < $maxqueue;
+            }
+
+            return ((int) $cachedcount) < $maxqueue;
+        } catch (\Throwable $e) {
+            // Fail open.
+            debugging('local_webhookengine: queue guard error: ' . $e->getMessage(), DEBUG_DEVELOPER);
+            return true;
         }
+    }
 
-        return ((int) $cachedcount) < $maxqueue;
+    /**
+     * Trigger an administrative message notification when a hook is rate limited.
+     *
+     * Throttled by cache cooldown to at most once every 15 minutes per hook.
+     *
+     * @param object $hook Hook database record.
+     */
+    public static function trigger_rate_limit_alert(object $hook): void {
+        try {
+            $cache = \cache::make('local_webhookengine', 'ratelimit');
+            $cooldownkey = 'alert_rl_' . $hook->id;
+            if ($cache->get($cooldownkey) !== false) {
+                return;
+            }
+            // Cooldown for 15 minutes.
+            $cache->set($cooldownkey, 1);
+
+            $admins = get_admins();
+            if (empty($admins)) {
+                return;
+            }
+            $primaryadmin = reset($admins);
+
+            $message = new \core\message\message();
+            $message->component = 'local_webhookengine';
+            $message->name = 'ratelimit_alert';
+            $message->userfrom = \core_user::get_noreply_user();
+            $message->userto = $primaryadmin;
+            $message->subject = get_string('ratelimit_alert_subject', 'local_webhookengine', $hook->name);
+            $message->fullmessage = get_string('ratelimit_alert_body', 'local_webhookengine', (object) [
+                'hookname' => $hook->name,
+                'hookid' => $hook->id,
+                'time' => userdate(time()),
+            ]);
+            $message->fullmessageformat = FORMAT_PLAIN;
+            $message->fullmessagehtml = '';
+            $message->smallmessage = get_string('ratelimit_alert_subject', 'local_webhookengine', $hook->name);
+            $message->notification = 1;
+            message_send($message);
+        } catch (\Throwable $e) {
+            debugging('local_webhookengine: failed to trigger rate limit alert: ' . $e->getMessage(), DEBUG_DEVELOPER);
+        }
     }
 }

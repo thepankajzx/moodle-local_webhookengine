@@ -68,6 +68,38 @@ class check_health extends \core\task\scheduled_task {
                 $this->notify_admins($hook, $reason);
             }
         }
+
+        // Sweep overdue orphaned deliveries whose ad-hoc tasks failed or vanished.
+        $this->sweep_orphaned_deliveries();
+    }
+
+    /**
+     * Re-queue overdue queued or retrying deliveries stuck for over 1 hour.
+     *
+     * Uses ad-hoc deduplication to ensure exactly one task per delivery in the queue.
+     *
+     * @return int Number of orphaned deliveries swept and requeued.
+     */
+    public function sweep_orphaned_deliveries(): int {
+        global $DB;
+
+        $onehourago = time() - 3600;
+        $sql = "SELECT id
+                  FROM {local_webhookengine_delivery}
+                 WHERE status IN ('queued', 'retrying')
+                   AND nextattempt < :onehourago
+              ORDER BY nextattempt ASC";
+        $orphans = $DB->get_records_sql($sql, ['onehourago' => $onehourago], 0, 100);
+        $requeued = 0;
+
+        foreach ($orphans as $orphan) {
+            $task = new \local_webhookengine\task\send_delivery();
+            $task->set_custom_data((object) ['deliveryid' => (int) $orphan->id]);
+            \core\task\manager::queue_adhoc_task($task, true);
+            $requeued++;
+        }
+
+        return $requeued;
     }
 
     /**

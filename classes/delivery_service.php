@@ -54,18 +54,20 @@ class delivery_service {
         $killswitch = (bool) get_config('local_webhookengine', 'killswitch');
         if ($killswitch) {
             $delivery->status = 'dropped';
-            $delivery->errorcode = 'killswitch_enabled';
+            $delivery->errorcode = reasons::KILL_SWITCH;
             $delivery->timelastattempt = time();
             $DB->update_record('local_webhookengine_delivery', $delivery);
+            hook_repository::record_drop((int) $delivery->hookid, reasons::KILL_SWITCH);
             return false;
         }
 
         $hook = hook_repository::get_hook($delivery->hookid);
         if (!$hook || !$hook->enabled || $hook->status !== 'active') {
             $delivery->status = 'dropped';
-            $delivery->errorcode = 'hook_disabled_or_missing';
+            $delivery->errorcode = reasons::HOOK_DISABLED_OR_MISSING;
             $delivery->timelastattempt = time();
             $DB->update_record('local_webhookengine_delivery', $delivery);
+            hook_repository::record_drop((int) $delivery->hookid, reasons::HOOK_DISABLED_OR_MISSING);
             return false;
         }
 
@@ -105,7 +107,9 @@ class delivery_service {
         if (empty($body)) {
             // Reject delivery execution with error - never send an empty {} body.
             $delivery->status = 'failed';
-            $delivery->errorcode = 'payload_purged_cannot_replay';
+            if (empty($delivery->errorcode)) {
+                $delivery->errorcode = 'payload_purged_cannot_replay';
+            }
             $delivery->timelastattempt = time();
             $DB->update_record('local_webhookengine_delivery', $delivery);
             return false;

@@ -32,11 +32,19 @@ class renderer extends plugin_renderer_base {
      * @param int $queuedcount Number of queued deliveries.
      * @param int|null $oldestage Seconds since oldest queued delivery.
      * @param bool $killswitch Whether global killswitch is active.
+     * @param int $totaldrops Total dropped events recorded across all hooks.
      * @return string Rendered HTML.
      */
-    public function render_health_panel(int $queuedcount, ?int $oldestage, bool $killswitch): string {
+    public function render_health_panel(
+        int $queuedcount,
+        ?int $oldestage,
+        bool $killswitch,
+        int $totaldrops = 0
+    ): string {
         $context = [
             'queuedcount' => $queuedcount,
+            'totaldrops' => $totaldrops,
+            'hasdrops' => ($totaldrops > 0),
             'oldestage' => $oldestage !== null ? format_time($oldestage) : null,
             'isdelayed' => ($oldestage !== null && $oldestage > 900), // 15 minutes threshold.
             'killswitch' => $killswitch,

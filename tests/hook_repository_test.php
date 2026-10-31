@@ -82,4 +82,51 @@ final class hook_repository_test extends \advanced_testcase {
         $this->assertEquals('active', $resumedstatus);
         $this->assertEquals($initialheaders, $resumedheaders);
     }
+
+    /**
+     * Test that explicitly clearing headers in update_hook removes them from the database.
+     */
+    public function test_clearing_headers_removes_them(): void {
+        global $DB;
+
+        $rawsecret = hook_repository::generate_raw_secret();
+        $data = (object) [
+            'name' => 'Clear Headers Test',
+            'url' => 'https://example.com/webhook',
+            'enabled' => 1,
+            'events' => ['\core\event\user_loggedin'],
+            'filters' => [],
+            'payloadopts' => [],
+            'headers' => [
+                ['name' => 'X-API-Key', 'value' => 'initial_key_value'],
+            ],
+            'timeout' => 10,
+            'maxattempts' => 9,
+        ];
+
+        $hookid = hook_repository::create_hook($data, $rawsecret);
+        $this->assertGreaterThan(0, $hookid);
+
+        $initialheaders = $DB->get_field('local_webhookengine_hook', 'headers', ['id' => $hookid]);
+        $this->assertNotEmpty($initialheaders);
+
+        // Update with empty headers array (clearing them via form submit).
+        $updatedata = (object) [
+            'name' => 'Clear Headers Test Updated',
+            'url' => 'https://example.com/webhook',
+            'enabled' => 1,
+            'events' => ['\core\event\user_loggedin'],
+            'filters' => [],
+            'payloadopts' => [],
+            'headers' => [], // Empty array represents cleared headers.
+            'timeout' => 10,
+            'maxattempts' => 9,
+        ];
+
+        $res = hook_repository::update_hook($hookid, $updatedata);
+        $this->assertTrue($res);
+
+        $clearedheaders = $DB->get_field('local_webhookengine_hook', 'headers', ['id' => $hookid]);
+        $this->assertNull($clearedheaders);
+    }
 }
