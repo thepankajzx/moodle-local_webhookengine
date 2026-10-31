@@ -98,7 +98,16 @@ class delivery_service {
             $rawdata = json_decode($body, true);
             if (is_array($rawdata) && isset($rawdata['eventname']) && !isset($rawdata['schema'])) {
                 // It's raw event data, render final envelope.
-                $body = payload_builder::render_envelope($delivery->uuid, $rawdata, $hook->payloadopts);
+                try {
+                    $body = payload_builder::render_envelope($delivery->uuid, $rawdata, $hook->payloadopts);
+                } catch (\Throwable $e) {
+                    $delivery->status = 'failed';
+                    $delivery->errorcode = 'template_invalid';
+                    $delivery->timelastattempt = time();
+                    $DB->update_record('local_webhookengine_delivery', $delivery);
+                    $this->record_hook_failure($hook);
+                    return false;
+                }
                 $delivery->payload = $body;
                 $DB->update_record('local_webhookengine_delivery', $delivery);
             }
@@ -112,6 +121,17 @@ class delivery_service {
             }
             $delivery->timelastattempt = time();
             $DB->update_record('local_webhookengine_delivery', $delivery);
+            return false;
+        }
+
+        // Fail-closed verification: ensure final payload is valid JSON before network dispatch.
+        $bodydecoded = @json_decode($body, true);
+        if ($bodydecoded === null) {
+            $delivery->status = 'failed';
+            $delivery->errorcode = 'template_invalid';
+            $delivery->timelastattempt = time();
+            $DB->update_record('local_webhookengine_delivery', $delivery);
+            $this->record_hook_failure($hook);
             return false;
         }
 

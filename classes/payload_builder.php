@@ -218,10 +218,10 @@ class payload_builder {
             }
         }
 
-        // Validate final template is valid JSON.
+        // Validate final template is valid JSON. Never fall back to default envelope.
         $decoded = @json_decode($result, true);
         if ($decoded === null) {
-            return json_encode($envelope, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR);
+            throw new \moodle_exception('error_invalid_json_template', 'local_webhookengine');
         }
 
         return $result;
