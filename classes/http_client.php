@@ -39,6 +39,9 @@ class http_client {
         $plugin = new \stdClass();
         $versionfile = __DIR__ . '/../version.php';
         if (file_exists($versionfile)) {
+            if (!defined('MATURITY_STABLE')) {
+                define('MATURITY_STABLE', 200);
+            }
             include($versionfile);
             if (!empty($plugin->release)) {
                 $release = (string) $plugin->release;
