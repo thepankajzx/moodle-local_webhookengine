@@ -237,7 +237,42 @@ class hook_repository {
 
         $id = $DB->insert_record('local_webhookengine_hook', $record);
         self::invalidate_event_map();
+
+        $event = \local_webhookengine\event\hook_created::create([
+            'context' => \context_system::instance(),
+            'objectid' => $id,
+            'other' => [
+                'name' => $record->name,
+                'url' => $record->url,
+            ],
+        ]);
+        $event->trigger();
+
         return $id;
+    }
+
+    /**
+     * Get list of active and non-deleted hooks.
+     *
+     * @param bool $enabledonly If true, only return enabled active hooks.
+     * @return array List of hook records indexed by ID.
+     */
+    public static function get_hooks(bool $enabledonly = false): array {
+        global $DB;
+        if ($enabledonly) {
+            return $DB->get_records_select(
+                'local_webhookengine_hook',
+                "enabled = 1 AND status = 'active'",
+                null,
+                'id ASC'
+            );
+        }
+        return $DB->get_records_select(
+            'local_webhookengine_hook',
+            "status != 'deleted'",
+            null,
+            'id ASC'
+        );
     }
 
     /**
@@ -249,6 +284,11 @@ class hook_repository {
      */
     public static function update_hook(int $id, object $data): bool {
         global $DB;
+        $before = $DB->get_record('local_webhookengine_hook', ['id' => $id]);
+        if (!$before) {
+            return false;
+        }
+
         $now = time();
 
         $record = (object) [
@@ -276,6 +316,33 @@ class hook_repository {
 
         $res = $DB->update_record('local_webhookengine_hook', $record);
         self::invalidate_event_map();
+
+        if ($res) {
+            $after = $DB->get_record('local_webhookengine_hook', ['id' => $id]);
+            if ($after) {
+                $fields = ['name', 'url', 'enabled', 'status', 'events', 'filters', 'payloadopts', 'timeout', 'maxattempts'];
+                $changes = [];
+                foreach ($fields as $f) {
+                    if ((string) ($before->$f ?? '') !== (string) ($after->$f ?? '')) {
+                        $changes[$f] = [
+                            'before' => $before->$f,
+                            'after' => $after->$f,
+                        ];
+                    }
+                }
+                if (!empty($changes)) {
+                    $event = \local_webhookengine\event\hook_updated::create([
+                        'context' => \context_system::instance(),
+                        'objectid' => $id,
+                        'other' => [
+                            'changes' => $changes,
+                        ],
+                    ]);
+                    $event->trigger();
+                }
+            }
+        }
+
         return $res;
     }
 
@@ -292,6 +359,7 @@ class hook_repository {
         if (!in_array($status, ['active', 'paused'])) {
             throw new \coding_exception('Invalid webhook status: ' . s($status));
         }
+        $beforestatus = $DB->get_field('local_webhookengine_hook', 'status', ['id' => $id]);
         $now = time();
         $record = (object) [
             'id' => $id,
@@ -300,6 +368,23 @@ class hook_repository {
         ];
         $res = $DB->update_record('local_webhookengine_hook', $record);
         self::invalidate_event_map();
+
+        if ($res && $beforestatus !== $status) {
+            $event = \local_webhookengine\event\hook_updated::create([
+                'context' => \context_system::instance(),
+                'objectid' => $id,
+                'other' => [
+                    'changes' => [
+                        'status' => [
+                            'before' => $beforestatus,
+                            'after' => $status,
+                        ],
+                    ],
+                ],
+            ]);
+            $event->trigger();
+        }
+
         return $res;
     }
 
@@ -324,16 +409,21 @@ class hook_repository {
     }
 
     /**
-     * Delete a hook and associated deliveries.
+     * Soft-delete a hook, disabling it while preserving delivery and audit history.
      *
      * @param int $id Hook ID.
      * @return bool True on success.
      */
     public static function delete_hook(int $id): bool {
         global $DB;
-        $DB->delete_records('local_webhookengine_delivery', ['hookid' => $id]);
-        $DB->delete_records('local_webhookengine_drop_ledger', ['hookid' => $id]);
-        $res = $DB->delete_records('local_webhookengine_hook', ['id' => $id]);
+        $now = time();
+        $record = (object) [
+            'id' => $id,
+            'status' => 'deleted',
+            'enabled' => 0,
+            'timemodified' => $now,
+        ];
+        $res = $DB->update_record('local_webhookengine_hook', $record);
         self::invalidate_event_map();
         return $res;
     }

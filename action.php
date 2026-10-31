@@ -53,7 +53,7 @@ switch ($action) {
     case 'delete':
         require_capability('local/webhookengine:manage', $context);
         $hook = hook_repository::get_hook($id);
-        if ($hook) {
+        if ($hook && $hook->status !== 'deleted') {
             hook_repository::delete_hook($id);
             $event = hook_deleted::create([
                 'context' => $context,
@@ -68,7 +68,8 @@ switch ($action) {
     case 'toggle_status':
         require_capability('local/webhookengine:manage', $context);
         $targetstatus = required_param('targetstatus', PARAM_ALPHA);
-        if (in_array($targetstatus, ['active', 'paused'])) {
+        $hook = hook_repository::get_hook($id);
+        if ($hook && $hook->status !== 'deleted' && in_array($targetstatus, ['active', 'paused'])) {
             hook_repository::set_hook_status($id, $targetstatus);
         }
         redirect(new moodle_url('/local/webhookengine/manage.php'));
@@ -77,7 +78,7 @@ switch ($action) {
     case 'rotate_secret':
         require_capability('local/webhookengine:manage', $context);
         $hook = hook_repository::get_hook($id);
-        if ($hook) {
+        if ($hook && $hook->status !== 'deleted') {
             $newsecret = hook_repository::rotate_secret($id);
             $whsec = hook_repository::format_whsec($newsecret);
 

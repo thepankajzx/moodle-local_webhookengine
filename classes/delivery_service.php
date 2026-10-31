@@ -135,6 +135,10 @@ class delivery_service {
             return false;
         }
 
+        // Compute cryptographic SHA-256 hash of the payload body for non-repudiation audit trail.
+        $bodyhash = hash('sha256', $body);
+        $delivery->bodyhash = $bodyhash;
+
         // Build standard headers.
         $timestamp = time();
         $signature = signer::sign($delivery->uuid, $timestamp, $body, $secret);

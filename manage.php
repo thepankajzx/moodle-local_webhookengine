@@ -49,7 +49,7 @@ $totaldrops = array_sum($allhookdrops);
 echo $renderer->render_health_panel($queuedcount, $oldestage, $killswitch, $totaldrops);
 
 // Hooks Table.
-$hooks = $DB->get_records('local_webhookengine_hook', [], 'id ASC');
+$hooks = \local_webhookengine\hook_repository::get_hooks();
 
 $addurl = new moodle_url('/local/webhookengine/edit.php');
 $deliveriesurl = new moodle_url('/local/webhookengine/deliveries.php');

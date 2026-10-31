@@ -37,7 +37,7 @@ $hook = null;
 
 if ($id > 0) {
     $hook = hook_repository::get_hook($id);
-    if (!$hook) {
+    if (!$hook || $hook->status === 'deleted') {
         throw new \moodle_exception('error_hook_not_found', 'local_webhookengine');
     }
 }

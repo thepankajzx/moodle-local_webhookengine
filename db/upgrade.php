@@ -79,5 +79,16 @@ function xmldb_local_webhookengine_upgrade(int $oldversion): bool {
         upgrade_plugin_savepoint(true, 2026110100, 'local', 'webhookengine');
     }
 
+    if ($oldversion < 2026110101) {
+        $table = new xmldb_table('local_webhookengine_delivery');
+        $field = new xmldb_field('bodyhash', XMLDB_TYPE_CHAR, '64', null, null, null, null, 'timelastattempt');
+
+        if (!$dbman->field_exists($table, $field)) {
+            $dbman->add_field($table, $field);
+        }
+
+        upgrade_plugin_savepoint(true, 2026110101, 'local', 'webhookengine');
+    }
+
     return true;
 }

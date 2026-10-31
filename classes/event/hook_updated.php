@@ -48,7 +48,8 @@ class hook_updated extends \core\event\base {
      * @return string
      */
     public function get_description(): string {
-        return "The user with id '{$this->userid}' updated webhook with id '{$this->objectid}'.";
+        $fields = !empty($this->other['changes']) ? implode(', ', array_keys($this->other['changes'])) : 'none';
+        return "The user with id '{$this->userid}' updated webhook with id '{$this->objectid}'. Changed fields: {$fields}.";
     }
 
     /**
