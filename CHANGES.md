@@ -5,6 +5,10 @@ All notable changes to the `local_webhookengine` plugin will be documented in th
 ## [1.0.3] - 2026-11-01
 
 ### Added
+- Implemented real-time performance telemetry service (`classes/telemetry.php`) computing rolling 24-hour success rates, p95 delivery latency percentiles, queue depth, and circuit breaker health.
+- Backed by short-TTL MUC application cache (`local_webhookengine/ratelimit`) to avoid production database query load during high-traffic admin dashboard views.
+- Upgraded administrative health panel (`templates/health_panel.mustache`) with rolling 24h success rates, p95 latencies, and circuit breaker trip counters.
+- Enriched `manage.php` webhook table with per-hook 24h success rate percentages, p95 latency indicators, and last failure error code details.
 - Implemented enterprise Circuit Breaker state machine (`classes/circuit_breaker.php`) with `closed`, `open`, and `half_open` states, protecting Moodle cron runners, cURL sockets, and database connections during downstream endpoint outages.
 - Configurable failure trip streak threshold (`circuitbreakertripstreak`, default 10) and cooldown period (`circuitbreakercooldown`, default 300s = 5m).
 - Automatic half-open probe testing: upon cooldown expiration, a single probe delivery is dispatched to test remote recovery. Successful response immediately restores `closed` healthy state and resets failure streaks; failed response trips circuit back to `open` with fresh cooldown.

@@ -60,5 +60,22 @@
                 {{/killswitch}}
             </div>
         </div>
+        <hr class="my-3">
+        <div class="row align-items-center">
+            <div class="col-md-4">
+                <div class="text-muted small">{{#str}}success_rate_24h, local_webhookengine{{/str}}</div>
+                <div class="h5 mb-0 font-weight-bold text-dark">{{successrate_display}}</div>
+            </div>
+            <div class="col-md-4">
+                <div class="text-muted small">{{#str}}p95_latency, local_webhookengine{{/str}}</div>
+                <div class="h5 mb-0 font-weight-bold text-dark">{{p95_display}}</div>
+            </div>
+            <div class="col-md-4">
+                <div class="text-muted small">{{#str}}circuits_status, local_webhookengine{{/str}}</div>
+                <div class="h6 mb-0 font-weight-bold {{#has_tripped_circuits}}text-danger{{/has_tripped_circuits}}{{^has_tripped_circuits}}text-success{{/has_tripped_circuits}}">
+                    {{circuits_status_display}}
+                </div>
+            </div>
+        </div>
     </div>
 </div>

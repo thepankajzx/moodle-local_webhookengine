@@ -33,22 +33,28 @@ class renderer extends plugin_renderer_base {
      * @param int|null $oldestage Seconds since oldest queued delivery.
      * @param bool $killswitch Whether global killswitch is active.
      * @param int $totaldrops Total dropped events recorded across all hooks.
+     * @param array $telemetry Optional extended telemetry data.
      * @return string Rendered HTML.
      */
     public function render_health_panel(
         int $queuedcount,
         ?int $oldestage,
         bool $killswitch,
-        int $totaldrops = 0
+        int $totaldrops = 0,
+        array $telemetry = []
     ): string {
-        $context = [
+        $context = array_merge([
             'queuedcount' => $queuedcount,
             'totaldrops' => $totaldrops,
             'hasdrops' => ($totaldrops > 0),
             'oldestage' => $oldestage !== null ? format_time($oldestage) : null,
             'isdelayed' => ($oldestage !== null && $oldestage > 900), // 15 minutes threshold.
             'killswitch' => $killswitch,
-        ];
+            'successrate_display' => $telemetry['successrate_display'] ?? '-',
+            'p95_display' => $telemetry['p95_display'] ?? '-',
+            'circuits_status_display' => $telemetry['circuits_status_display'] ?? '-',
+            'has_tripped_circuits' => !empty($telemetry['has_tripped_circuits']),
+        ], $telemetry);
         return $this->render_from_template('local_webhookengine/health_panel', $context);
     }
 

@@ -38,15 +38,17 @@ echo $OUTPUT->header();
 
 $renderer = $PAGE->get_renderer('local_webhookengine');
 
-// Health Panel.
-$queuedcount = $DB->count_records('local_webhookengine_delivery', ['status' => 'queued']);
-$oldestqueued = $DB->get_field_select('local_webhookengine_delivery', 'MIN(timecreated)', "status = 'queued'");
-$oldestage = $oldestqueued ? (time() - $oldestqueued) : null;
-$killswitch = (bool) get_config('local_webhookengine', 'killswitch');
+// Health Panel & Telemetry.
+$sysmetrics = \local_webhookengine\telemetry::get_system_metrics();
 $allhookdrops = \local_webhookengine\hook_repository::get_all_hooks_total_drops();
-$totaldrops = array_sum($allhookdrops);
 
-echo $renderer->render_health_panel($queuedcount, $oldestage, $killswitch, $totaldrops);
+echo $renderer->render_health_panel(
+    $sysmetrics['queuedcount'],
+    null,
+    $sysmetrics['killswitch'],
+    $sysmetrics['totaldrops'],
+    $sysmetrics
+);
 
 // Hooks Table.
 $hooks = \local_webhookengine\hook_repository::get_hooks();
@@ -116,10 +118,31 @@ if (empty($hooks)) {
             );
         }
 
-        // Last success time.
+        $hookmetrics = \local_webhookengine\telemetry::get_hook_metrics($hook->id);
+        if ($hookmetrics['successrate_24h'] !== null) {
+            $statusdisplay .= html_writer::div(
+                get_string('success_rate_24h', 'local_webhookengine') . ': ' . $hookmetrics['successrate_display'],
+                'small text-muted mt-1'
+            );
+        }
+
+        // Last success time & telemetry.
         $lastsuccess = $hook->lastsuccess
             ? userdate($hook->lastsuccess, get_string('strftimedatetimeshort', 'core_langconfig'))
             : get_string('never', 'local_webhookengine');
+
+        if ($hookmetrics['p95_duration_ms'] !== null) {
+            $lastsuccess .= html_writer::div('p95: ' . $hookmetrics['p95_display'], 'small text-muted');
+        }
+        if (!empty($hookmetrics['lasterror'])) {
+            $lastsuccess .= html_writer::div(
+                html_writer::span(
+                    get_string('status_failed', 'local_webhookengine') . ': ' . $hookmetrics['lasterror_display'],
+                    'text-danger small'
+                ),
+                'mt-1'
+            );
+        }
 
         // Action links.
         $editurl = new moodle_url('/local/webhookengine/edit.php', ['id' => $hook->id]);
