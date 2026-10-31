@@ -84,6 +84,33 @@ if ($hassiteconfig || has_capability('local/webhookengine:manage', context_syste
         5
     ));
 
+    // Mutual TLS (mTLS) Client Certificate Path.
+    $settingspage->add(new admin_setting_configtext(
+        'local_webhookengine/mtlscertpath',
+        get_string('setting_mtlscertpath', 'local_webhookengine'),
+        get_string('setting_mtlscertpath_desc', 'local_webhookengine'),
+        '',
+        PARAM_RAW_TRIMMED
+    ));
+
+    // Mutual TLS (mTLS) Client Private Key Path.
+    $settingspage->add(new admin_setting_configtext(
+        'local_webhookengine/mtlskeypath',
+        get_string('setting_mtlskeypath', 'local_webhookengine'),
+        get_string('setting_mtlskeypath_desc', 'local_webhookengine'),
+        '',
+        PARAM_RAW_TRIMMED
+    ));
+
+    // Mutual TLS (mTLS) Custom CA Bundle Path.
+    $settingspage->add(new admin_setting_configtext(
+        'local_webhookengine/mtlscapath',
+        get_string('setting_mtlscapath', 'local_webhookengine'),
+        get_string('setting_mtlscapath_desc', 'local_webhookengine'),
+        '',
+        PARAM_RAW_TRIMMED
+    ));
+
     // Default Request Timeout.
     $settingspage->add(new admin_setting_configtext(
         'local_webhookengine/defaulttimeout',

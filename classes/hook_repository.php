@@ -236,6 +236,12 @@ class hook_repository {
             'headers' => $headersval,
             'timeout' => $data->timeout ?? 10,
             'maxattempts' => $data->maxattempts ?? 9,
+            'usemtls' => !empty($data->usemtls) ? 1 : 0,
+            'authmode' => !empty($data->authmode) ? (string) $data->authmode : 'standard',
+            'oauth2tokenurl' => !empty($data->oauth2tokenurl) ? (string) $data->oauth2tokenurl : null,
+            'oauth2clientid' => !empty($data->oauth2clientid) ? (string) $data->oauth2clientid : null,
+            'oauth2clientsecret' => !empty($data->oauth2clientsecret) ? self::encrypt_secret($data->oauth2clientsecret) : null,
+            'oauth2scope' => !empty($data->oauth2scope) ? (string) $data->oauth2scope : null,
             'failstreak' => 0,
             'lastsuccess' => null,
             'lastfailure' => null,
@@ -313,6 +319,25 @@ class hook_repository {
             'timemodified' => $now,
         ];
 
+        if (isset($data->usemtls)) {
+            $record->usemtls = !empty($data->usemtls) ? 1 : 0;
+        }
+        if (isset($data->authmode)) {
+            $record->authmode = (string) $data->authmode;
+        }
+        if (isset($data->oauth2tokenurl)) {
+            $record->oauth2tokenurl = $data->oauth2tokenurl;
+        }
+        if (isset($data->oauth2clientid)) {
+            $record->oauth2clientid = $data->oauth2clientid;
+        }
+        if (isset($data->oauth2scope)) {
+            $record->oauth2scope = $data->oauth2scope;
+        }
+        if (!empty($data->oauth2clientsecret)) {
+            $record->oauth2clientsecret = self::encrypt_secret($data->oauth2clientsecret);
+        }
+
         if (isset($data->status)) {
             $record->status = $data->status;
         }
@@ -329,7 +354,22 @@ class hook_repository {
         if ($res) {
             $after = $DB->get_record('local_webhookengine_hook', ['id' => $id]);
             if ($after) {
-                $fields = ['name', 'url', 'enabled', 'status', 'events', 'filters', 'payloadopts', 'timeout', 'maxattempts'];
+                $fields = [
+                    'name',
+                    'url',
+                    'enabled',
+                    'status',
+                    'events',
+                    'filters',
+                    'payloadopts',
+                    'timeout',
+                    'maxattempts',
+                    'usemtls',
+                    'authmode',
+                    'oauth2tokenurl',
+                    'oauth2clientid',
+                    'oauth2scope',
+                ];
                 $changes = [];
                 foreach ($fields as $f) {
                     if ((string) ($before->$f ?? '') !== (string) ($after->$f ?? '')) {

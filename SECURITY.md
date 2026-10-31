@@ -10,8 +10,9 @@ We actively provide security patches, vulnerability mitigations, and compliance 
 
 | Version | Supported | Moodle Compatibility | Status |
 |:---:|:---:|:---:|:---|
-| **1.0.3** | :white_check_mark: | 4.5 LTS – 5.2 | **Active / Current Stable Release** (Enterprise Hardened) |
-| 1.0.2 | :x: | 4.5 – 5.2 | End of Life (Upgrade to 1.0.3 immediately) |
+| **1.1.0** | :white_check_mark: | 4.5 LTS – 5.2 | **Active / Current Stable Release** (Enterprise Hardened) |
+| **1.0.3** | :white_check_mark: | 4.5 LTS – 5.2 | Maintained (Security patches) |
+| 1.0.2 | :x: | 4.5 – 5.2 | End of Life (Upgrade to 1.1.0 immediately) |
 | 1.0.1 | :x: | 4.5 – 5.2 | End of Life |
 | 1.0.0 | :x: | 4.5 – 5.2 | End of Life |
 

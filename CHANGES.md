@@ -2,6 +2,19 @@
 
 All notable changes to the `local_webhookengine` plugin will be documented in this file.
 
+## [1.1.0] - 2026-11-01
+
+### Added
+- Implemented Mutual TLS (mTLS) client certificate authentication (`classes/http_client.php`) for Zero Trust enterprise and government endpoints.
+- Added administrative settings `mtlscertpath`, `mtlskeypath`, and `mtlscapath` in `settings.php` for server-wide X.509 client certificate management outside the web root.
+- Added per-hook `usemtls` toggle with pre-flight file existence and readability verification, returning safe diagnostic error codes without crashing background cron workers.
+- Implemented OAuth2 Client Credentials flow (`classes/oauth2_client.php`) supporting modern cloud APIs (Azure Entra ID, AWS API Gateway, Okta, custom SaaS).
+- Supported token endpoint discovery, client ID & client secret authentication, scope negotiation, and high-performance MUC caching (`oauth2_token_{$hookid}`) with dynamic safety margins.
+- Enforced strict SSRF validation on OAuth2 token endpoints and encrypted storage for OAuth2 client secrets via Moodle's core encryption subsystem (`\core\encryption`).
+- Database schema migration savepoint `2026110104` adding `usemtls`, `authmode`, `oauth2tokenurl`, `oauth2clientid`, `oauth2clientsecret`, and `oauth2scope` to `{local_webhookengine_hook}`.
+- Integrated OAuth2 Bearer token injection and mTLS execution into background delivery pipelines (`classes/delivery_service.php`).
+- Extended CLI administration tool (`cli/webhook_ctl.php`) to export and import mTLS and OAuth2 configuration metadata with automatic secret redaction.
+
 ## [1.0.3] - 2026-11-01
 
 ### Added

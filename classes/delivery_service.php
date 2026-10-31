@@ -205,8 +205,34 @@ class delivery_service {
                 }
             }
 
+            // OAuth2 Client Credentials flow.
+            if (!empty($hook->authmode) && $hook->authmode === 'oauth2') {
+                try {
+                    $accesstoken = oauth2_client::get_access_token($hook);
+                    $hasauthheader = false;
+                    foreach ($headers as $hdr) {
+                        if (stripos($hdr, 'Authorization:') === 0) {
+                            $hasauthheader = true;
+                            break;
+                        }
+                    }
+                    if (!$hasauthheader) {
+                        $headers[] = 'Authorization: Bearer ' . $accesstoken;
+                    }
+                } catch (\Throwable $e) {
+                    $delivery->status = 'failed';
+                    $delivery->errorcode = 'oauth2_token_failed';
+                    $delivery->timelastattempt = time();
+                    $delivery->attempts++;
+                    $DB->update_record('local_webhookengine_delivery', $delivery);
+                    $this->record_hook_failure($hook);
+                    return false;
+                }
+            }
+
             $timeout = $hook->timeout ?: 10;
-            $response = $httpclient->send($hook->url, $body, $headers, $timeout);
+            $usemtls = !empty($hook->usemtls);
+            $response = $httpclient->send($hook->url, $body, $headers, $timeout, $usemtls);
 
             $delivery->attempts++;
             $delivery->timelastattempt = time();

@@ -120,5 +120,37 @@ function xmldb_local_webhookengine_upgrade(int $oldversion): bool {
         upgrade_plugin_savepoint(true, 2026110103, 'local', 'webhookengine');
     }
 
+    if ($oldversion < 2026110104) {
+        $table = new xmldb_table('local_webhookengine_hook');
+
+        $field1 = new xmldb_field('usemtls', XMLDB_TYPE_INTEGER, '1', null, XMLDB_NOTNULL, null, '0', 'circuitcooldownuntil');
+        $field2 = new xmldb_field('authmode', XMLDB_TYPE_CHAR, '32', null, XMLDB_NOTNULL, null, 'standard', 'usemtls');
+        $field3 = new xmldb_field('oauth2tokenurl', XMLDB_TYPE_TEXT, null, null, null, null, null, 'authmode');
+        $field4 = new xmldb_field('oauth2clientid', XMLDB_TYPE_CHAR, '255', null, null, null, null, 'oauth2tokenurl');
+        $field5 = new xmldb_field('oauth2clientsecret', XMLDB_TYPE_TEXT, null, null, null, null, null, 'oauth2clientid');
+        $field6 = new xmldb_field('oauth2scope', XMLDB_TYPE_CHAR, '255', null, null, null, null, 'oauth2clientsecret');
+
+        if (!$dbman->field_exists($table, $field1)) {
+            $dbman->add_field($table, $field1);
+        }
+        if (!$dbman->field_exists($table, $field2)) {
+            $dbman->add_field($table, $field2);
+        }
+        if (!$dbman->field_exists($table, $field3)) {
+            $dbman->add_field($table, $field3);
+        }
+        if (!$dbman->field_exists($table, $field4)) {
+            $dbman->add_field($table, $field4);
+        }
+        if (!$dbman->field_exists($table, $field5)) {
+            $dbman->add_field($table, $field5);
+        }
+        if (!$dbman->field_exists($table, $field6)) {
+            $dbman->add_field($table, $field6);
+        }
+
+        upgrade_plugin_savepoint(true, 2026110104, 'local', 'webhookengine');
+    }
+
     return true;
 }

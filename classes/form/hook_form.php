@@ -116,6 +116,47 @@ class hook_form extends moodleform {
         $mform->setType('opt_template', PARAM_RAW);
         $mform->addHelpButton('opt_template', 'payload_template', 'local_webhookengine');
 
+        // Authentication & Security Header.
+        $mform->addElement('header', 'securityhdr', get_string('auth_and_security', 'local_webhookengine'));
+
+        $authoptions = [
+            'standard' => get_string('auth_mode_standard', 'local_webhookengine'),
+            'oauth2' => get_string('auth_mode_oauth2', 'local_webhookengine'),
+        ];
+        $mform->addElement('select', 'authmode', get_string('auth_mode', 'local_webhookengine'), $authoptions);
+        $mform->setDefault('authmode', 'standard');
+
+        // OAuth2 fields.
+        $mform->addElement('text', 'oauth2tokenurl', get_string('oauth2_token_url', 'local_webhookengine'), ['size' => '60']);
+        $mform->setType('oauth2tokenurl', PARAM_URL);
+        $mform->addHelpButton('oauth2tokenurl', 'oauth2_token_url', 'local_webhookengine');
+        $mform->hideIf('oauth2tokenurl', 'authmode', 'neq', 'oauth2');
+
+        $mform->addElement('text', 'oauth2clientid', get_string('oauth2_client_id', 'local_webhookengine'), ['size' => '50']);
+        $mform->setType('oauth2clientid', PARAM_TEXT);
+        $mform->addHelpButton('oauth2clientid', 'oauth2_client_id', 'local_webhookengine');
+        $mform->hideIf('oauth2clientid', 'authmode', 'neq', 'oauth2');
+
+        $mform->addElement(
+            'passwordunmask',
+            'oauth2clientsecret',
+            get_string('oauth2_client_secret', 'local_webhookengine'),
+            ['size' => '50']
+        );
+        $mform->setType('oauth2clientsecret', PARAM_RAW);
+        $mform->addHelpButton('oauth2clientsecret', 'oauth2_client_secret', 'local_webhookengine');
+        $mform->hideIf('oauth2clientsecret', 'authmode', 'neq', 'oauth2');
+
+        $mform->addElement('text', 'oauth2scope', get_string('oauth2_scope', 'local_webhookengine'), ['size' => '40']);
+        $mform->setType('oauth2scope', PARAM_TEXT);
+        $mform->addHelpButton('oauth2scope', 'oauth2_scope', 'local_webhookengine');
+        $mform->hideIf('oauth2scope', 'authmode', 'neq', 'oauth2');
+
+        // Mutual TLS (mTLS) client certificate toggle.
+        $mform->addElement('advcheckbox', 'usemtls', get_string('use_mtls', 'local_webhookengine'));
+        $mform->addHelpButton('usemtls', 'use_mtls', 'local_webhookengine');
+        $mform->setDefault('usemtls', 0);
+
         // Network & Delivery Header.
         $mform->addElement('header', 'networkhdr', get_string('network_delivery', 'local_webhookengine'));
 
@@ -221,13 +262,35 @@ class hook_form extends moodleform {
             }
         }
 
-        // 5. Timeout validation.
+        // 5. OAuth2 validation.
+        if (!empty($data['authmode']) && $data['authmode'] === 'oauth2') {
+            if (empty($data['oauth2tokenurl'])) {
+                $errors['oauth2tokenurl'] = get_string('error_oauth2_missing_url', 'local_webhookengine');
+            } else {
+                $tokenurlerr = url_validator::validate_for_config($data['oauth2tokenurl']);
+                if ($tokenurlerr !== null) {
+                    $errors['oauth2tokenurl'] = get_string($tokenurlerr, 'local_webhookengine');
+                }
+            }
+
+            if (empty($data['oauth2clientid'])) {
+                $errors['oauth2clientid'] = get_string('required');
+            }
+
+            $hook = $this->_customdata['hook'] ?? null;
+            $hasexistingsecret = $hook && !empty($hook->oauth2clientsecret);
+            if (empty($data['oauth2clientsecret']) && !$hasexistingsecret) {
+                $errors['oauth2clientsecret'] = get_string('required');
+            }
+        }
+
+        // 6. Timeout validation.
         $timeout = (int) ($data['timeout'] ?? 10);
         if ($timeout < 1 || $timeout > 30) {
             $errors['timeout'] = get_string('error_timeout_range', 'local_webhookengine');
         }
 
-        // 6. Max attempts validation.
+        // 7. Max attempts validation.
         $maxattempts = (int) ($data['maxattempts'] ?? 9);
         if ($maxattempts < 1 || $maxattempts > 10) {
             $errors['maxattempts'] = get_string('error_maxattempts_range', 'local_webhookengine');

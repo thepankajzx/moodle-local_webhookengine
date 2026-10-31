@@ -110,6 +110,12 @@ if ($mform->is_cancelled()) {
             'headers' => !empty($headers) ? $headers : null,
             'timeout' => $data->timeout,
             'maxattempts' => $data->maxattempts,
+            'usemtls' => !empty($data->usemtls) ? 1 : 0,
+            'authmode' => !empty($data->authmode) ? (string) $data->authmode : 'standard',
+            'oauth2tokenurl' => !empty($data->oauth2tokenurl) ? trim($data->oauth2tokenurl) : null,
+            'oauth2clientid' => !empty($data->oauth2clientid) ? trim($data->oauth2clientid) : null,
+            'oauth2clientsecret' => !empty($data->oauth2clientsecret) ? trim($data->oauth2clientsecret) : null,
+            'oauth2scope' => !empty($data->oauth2scope) ? trim($data->oauth2scope) : null,
         ];
 
         $newid = hook_repository::create_hook($record, $rawsecret);
@@ -140,7 +146,16 @@ if ($mform->is_cancelled()) {
             'payloadopts' => $payloadopts,
             'timeout' => $data->timeout,
             'maxattempts' => $data->maxattempts,
+            'usemtls' => !empty($data->usemtls) ? 1 : 0,
+            'authmode' => !empty($data->authmode) ? (string) $data->authmode : 'standard',
+            'oauth2tokenurl' => !empty($data->oauth2tokenurl) ? trim($data->oauth2tokenurl) : null,
+            'oauth2clientid' => !empty($data->oauth2clientid) ? trim($data->oauth2clientid) : null,
+            'oauth2scope' => !empty($data->oauth2scope) ? trim($data->oauth2scope) : null,
         ];
+
+        if (!empty($data->oauth2clientsecret)) {
+            $record->oauth2clientsecret = trim($data->oauth2clientsecret);
+        }
 
         if (!empty($data->clearheaders)) {
             $record->clearheaders = true;
@@ -188,6 +203,11 @@ if ($hook && !$mform->is_submitted()) {
         'opt_template' => $hook->payloadopts['template'] ?? '',
         'timeout' => $hook->timeout,
         'maxattempts' => $hook->maxattempts,
+        'usemtls' => !empty($hook->usemtls) ? 1 : 0,
+        'authmode' => !empty($hook->authmode) ? $hook->authmode : 'standard',
+        'oauth2tokenurl' => $hook->oauth2tokenurl ?? '',
+        'oauth2clientid' => $hook->oauth2clientid ?? '',
+        'oauth2scope' => $hook->oauth2scope ?? '',
     ];
 
     if (!empty($hook->headers)) {

@@ -59,9 +59,10 @@ class http_client {
      * @param string $body Raw JSON request body.
      * @param array $headers List of HTTP headers in "Header: Value" format.
      * @param int $timeout Request timeout in seconds.
+     * @param bool $usemtls Whether to authenticate using client mTLS certificate.
      * @return object Object with status, errno, error, duration, retryafter.
      */
-    public function send(string $url, string $body, array $headers, int $timeout = 10): object {
+    public function send(string $url, string $body, array $headers, int $timeout = 10, bool $usemtls = false): object {
         global $CFG;
         require_once($CFG->libdir . '/filelib.php');
 
@@ -105,6 +106,33 @@ class http_client {
         // IP pinning via CURLOPT_RESOLVE prevents DNS rebinding TOCTOU attacks.
         if (!empty($validation['resolve_entry'])) {
             $options['CURLOPT_RESOLVE'] = [$validation['resolve_entry']];
+        }
+
+        // Mutual TLS (mTLS) client certificate handling.
+        if ($usemtls) {
+            $certpath = (string) get_config('local_webhookengine', 'mtlscertpath');
+            $keypath = (string) get_config('local_webhookengine', 'mtlskeypath');
+
+            $certinvalid = empty($certpath) || !file_exists($certpath) || !is_readable($certpath);
+            $keyinvalid = empty($keypath) || !file_exists($keypath) || !is_readable($keypath);
+
+            if ($certinvalid || $keyinvalid) {
+                return (object) [
+                    'status' => 0,
+                    'errno' => 58, // CURLE_SSL_CERTPROBLEM.
+                    'error' => 'mTLS certificate or private key missing or unreadable on server',
+                    'duration' => 0,
+                    'retryafter' => null,
+                ];
+            }
+
+            $options['CURLOPT_SSLCERT'] = $certpath;
+            $options['CURLOPT_SSLKEY'] = $keypath;
+
+            $capath = (string) get_config('local_webhookengine', 'mtlscapath');
+            if (!empty($capath) && file_exists($capath) && is_readable($capath)) {
+                $options['CURLOPT_CAINFO'] = $capath;
+            }
         }
 
         $starttime = microtime(true);
