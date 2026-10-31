@@ -1,0 +1,58 @@
+{{!
+    This file is part of Moodle - http://moodle.org/
+
+    Moodle is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    Moodle is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
+}}
+{{!
+    @template local_webhookengine/health_panel
+
+    Health panel template.
+
+    Example context (json):
+    {
+        "queuedcount": 12,
+        "oldestage": "5 mins",
+        "isdelayed": false,
+        "killswitch": false
+    }
+}}
+<div class="card mb-4 local_webhookengine_healthpanel">
+    <div class="card-body">
+        <div class="row align-items-center">
+            <div class="col-md-4">
+                <div class="text-muted small">{{#str}}queued_deliveries, local_webhookengine{{/str}}</div>
+                <div class="h4 mb-0 font-weight-bold">{{queuedcount}}</div>
+            </div>
+            <div class="col-md-4">
+                <div class="text-muted small">{{#str}}oldest_queued_age, local_webhookengine{{/str}}</div>
+                <div class="h5 mb-0 {{#isdelayed}}text-danger{{/isdelayed}}">
+                    {{#oldestage}}{{oldestage}}{{/oldestage}}
+                    {{^oldestage}}-{{/oldestage}}
+                </div>
+                {{#isdelayed}}
+                <div class="text-danger small mt-1">{{#str}}cron_delayed_warning, local_webhookengine{{/str}}</div>
+                {{/isdelayed}}
+            </div>
+            <div class="col-md-4">
+                <div class="text-muted small">{{#str}}system_status, local_webhookengine{{/str}}</div>
+                {{#killswitch}}
+                <span class="badge badge-danger bg-danger">{{#str}}killswitch_active, local_webhookengine{{/str}}</span>
+                {{/killswitch}}
+                {{^killswitch}}
+                <span class="badge badge-success bg-success">{{#str}}system_operational, local_webhookengine{{/str}}</span>
+                {{/killswitch}}
+            </div>
+        </div>
+    </div>
+</div>
