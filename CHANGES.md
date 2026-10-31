@@ -5,6 +5,17 @@ All notable changes to the `local_webhookengine` plugin will be documented in th
 ## [1.0.3] - 2026-11-01
 
 ### Added
+- Implemented enterprise Circuit Breaker state machine (`classes/circuit_breaker.php`) with `closed`, `open`, and `half_open` states, protecting Moodle cron runners, cURL sockets, and database connections during downstream endpoint outages.
+- Configurable failure trip streak threshold (`circuitbreakertripstreak`, default 10) and cooldown period (`circuitbreakercooldown`, default 300s = 5m).
+- Automatic half-open probe testing: upon cooldown expiration, a single probe delivery is dispatched to test remote recovery. Successful response immediately restores `closed` healthy state and resets failure streaks; failed response trips circuit back to `open` with fresh cooldown.
+- Ingress short-circuiting in `observer.php`: when a target hook's circuit is open, incoming events are recorded directly into `{local_webhookengine_drop_ledger}` with `reasons::CIRCUIT_BREAKER_OPEN` and skipped, completely avoiding database queue bloat and cron lockups.
+- Per-hook concurrency slot throttling (`maxconcurrenthook`, default 5) in `rate_limiter.php`, preventing any single degraded endpoint from monopolizing scheduled task execution threads.
+- Administrative manual circuit reset action (`reset_circuit`) and visual status badges (`Closed`, `Open`, `Half-open`) in `manage.php`.
+- Registered `circuit_breaker_alert` message provider alerting administrators when a circuit trips.
+- Database schema migration savepoint `2026110103` adding `circuitstate` and `circuitcooldownuntil` to `{local_webhookengine_hook}`.
+- Implemented dual-secret rotation with zero-downtime grace period (`rotationgraceperiod`, default 24h). During active grace period, webhooks are signed with both current and previous secrets via Standard Webhooks multi-signature specification (`webhook-signature: v1,sig1 v1,sig2`), allowing receiving servers (n8n, Zapier, custom endpoints) to verify payloads with either secret without downtime.
+- Space-delimited multi-signature verification support in `signer::verify()` adhering strictly to Standard Webhooks specification.
+- Database migration savepoint `2026110102` adding `prevsecret` (nullable text) and `secretrotatedat` (nullable int) to `{local_webhookengine_hook}`.
 - Implemented high-throughput aggregated drop ledger `{local_webhookengine_drop_ledger}` with atomic 8-slot sharding to eliminate silent event drops with zero lock contention.
 - Introduced centralized reason registry (`\local_webhookengine\reasons`) classifying drops (`rate_limited`, `queue_overload`, `hook_paused`, `killswitch_enabled`, `hook_backlog_exceeded`, `hook_disabled_or_missing`, `observer_error`).
 - Upgraded event map to v2 (`map_v2`) tracking paused hook status, enabling precise drop recording when events fire during planned webhook downtime.

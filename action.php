@@ -105,6 +105,20 @@ switch ($action) {
         redirect(new moodle_url('/local/webhookengine/manage.php'));
         break;
 
+    case 'reset_circuit':
+        require_capability('local/webhookengine:manage', $context);
+        $hook = hook_repository::get_hook($id);
+        if ($hook && $hook->status !== 'deleted') {
+            \local_webhookengine\circuit_breaker::reset_circuit($id);
+            \local_webhookengine\rate_limiter::release_all_hook_slots($id);
+            redirect(
+                new moodle_url('/local/webhookengine/manage.php'),
+                get_string('circuit_reset_success', 'local_webhookengine', $hook->name)
+            );
+        }
+        redirect(new moodle_url('/local/webhookengine/manage.php'));
+        break;
+
     case 'send_test':
         require_capability('local/webhookengine:manage', $context);
         $hook = hook_repository::get_hook($id);

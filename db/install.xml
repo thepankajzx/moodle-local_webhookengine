@@ -18,6 +18,8 @@
         <FIELD NAME="timeout" TYPE="int" LENGTH="3" NOTNULL="true" DEFAULT="10" SEQUENCE="false"/>
         <FIELD NAME="maxattempts" TYPE="int" LENGTH="2" NOTNULL="true" DEFAULT="9" SEQUENCE="false"/>
         <FIELD NAME="failstreak" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false"/>
+        <FIELD NAME="circuitstate" TYPE="char" LENGTH="10" NOTNULL="true" DEFAULT="closed" SEQUENCE="false" COMMENT="Circuit breaker state: closed, open, half_open."/>
+        <FIELD NAME="circuitcooldownuntil" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false" COMMENT="Timestamp until which the circuit breaker remains open."/>
         <FIELD NAME="lastsuccess" TYPE="int" LENGTH="10" NOTNULL="false" SEQUENCE="false"/>
         <FIELD NAME="lastfailure" TYPE="int" LENGTH="10" NOTNULL="false" SEQUENCE="false"/>
         <FIELD NAME="timecreated" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="false"/>

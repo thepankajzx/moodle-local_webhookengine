@@ -42,6 +42,9 @@ class reasons {
     /** @var string Delivery dropped at dispatch time because hook was disabled or deleted. */
     public const HOOK_DISABLED_OR_MISSING = 'hook_disabled_or_missing';
 
+    /** @var string Event dropped due to target hook circuit breaker being open after consecutive failures. */
+    public const CIRCUIT_BREAKER_OPEN = 'circuit_breaker_open';
+
     /** @var string Drop recorded due to an unexpected exception inside observer processing. */
     public const OBSERVER_ERROR = 'observer_error';
 }

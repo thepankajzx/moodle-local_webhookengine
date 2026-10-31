@@ -103,6 +103,19 @@ if (empty($hooks)) {
             );
         }
 
+        $circuitstate = \local_webhookengine\circuit_breaker::get_state($hook);
+        if ($circuitstate === \local_webhookengine\circuit_breaker::STATE_OPEN) {
+            $statusdisplay .= ' ' . html_writer::span(
+                get_string('circuitstate_open', 'local_webhookengine'),
+                'badge badge-danger bg-danger text-white'
+            );
+        } else if ($circuitstate === \local_webhookengine\circuit_breaker::STATE_HALF_OPEN) {
+            $statusdisplay .= ' ' . html_writer::span(
+                get_string('circuitstate_half_open', 'local_webhookengine'),
+                'badge badge-warning bg-warning text-dark'
+            );
+        }
+
         // Last success time.
         $lastsuccess = $hook->lastsuccess
             ? userdate($hook->lastsuccess, get_string('strftimedatetimeshort', 'core_langconfig'))
@@ -253,14 +266,36 @@ if (empty($hooks)) {
             'class' => 'd-inline m-0 p-0',
         ]);
 
+        // Reset circuit button if open.
+        if ($circuitstate === \local_webhookengine\circuit_breaker::STATE_OPEN) {
+            $resethiddens = html_writer::empty_tag('input', ['type' => 'hidden', 'name' => 'action', 'value' => 'reset_circuit'])
+                . html_writer::empty_tag('input', ['type' => 'hidden', 'name' => 'id', 'value' => $hook->id])
+                . html_writer::empty_tag('input', ['type' => 'hidden', 'name' => 'sesskey', 'value' => sesskey()]);
+            $resetsubmit = html_writer::empty_tag('input', [
+                'type' => 'submit',
+                'value' => get_string('reset_circuit', 'local_webhookengine'),
+                'class' => 'btn btn-sm btn-outline-warning text-nowrap',
+            ]);
+            $resetform = $resethiddens . $resetsubmit;
+            $actions[] = html_writer::tag('form', $resetform, [
+                'method' => 'post',
+                'action' => $actionurl->out(false),
+                'class' => 'd-inline m-0 p-0',
+            ]);
+        }
+
         // Balanced 2-row layout with clean horizontal and vertical spacing.
         $row1 = html_writer::div(
             $actions[0] . $actions[1] . $actions[2],
             'd-flex align-items-center',
             ['style' => 'gap: 6px;']
         );
+        $row2items = $actions[3] . $actions[4] . $actions[5];
+        if (isset($actions[6])) {
+            $row2items .= $actions[6];
+        }
         $row2 = html_writer::div(
-            $actions[3] . $actions[4] . $actions[5],
+            $row2items,
             'd-flex align-items-center',
             ['style' => 'gap: 6px;']
         );

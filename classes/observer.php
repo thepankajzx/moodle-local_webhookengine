@@ -104,6 +104,12 @@ class observer {
                     continue;
                 }
 
+                // Circuit breaker check: drop incoming events if downstream endpoint circuit is open.
+                if (!circuit_breaker::can_dispatch($hook)) {
+                    hook_repository::record_drop($hook->id, reasons::CIRCUIT_BREAKER_OPEN);
+                    continue;
+                }
+
                 // Backlog check: protect shared queue from noisy neighbor starvation.
                 if (rate_limiter::is_hook_backlog_exceeded($hook->id)) {
                     hook_repository::record_drop($hook->id, reasons::HOOK_BACKLOG_EXCEEDED);

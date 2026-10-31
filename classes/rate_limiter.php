@@ -182,4 +182,78 @@ class rate_limiter {
             debugging('local_webhookengine: failed to trigger rate limit alert: ' . $e->getMessage(), DEBUG_DEVELOPER);
         }
     }
+
+    /**
+     * Acquire a concurrency worker slot for a specific hook.
+     *
+     * Prevents a slow or degrading hook from monopolizing cron delivery processes.
+     *
+     * @param int $hookid Hook database ID.
+     * @param int $max Maximum allowed concurrent worker slots (default 5).
+     * @return bool True if slot acquired, false if concurrency limit reached.
+     */
+    public static function acquire_hook_slot(int $hookid, int $max = 5): bool {
+        if ($hookid <= 0) {
+            return true;
+        }
+
+        try {
+            $cache = \cache::make('local_webhookengine', 'ratelimit');
+            $key = 'concurrent_' . $hookid;
+            $count = (int) $cache->get($key);
+
+            if ($count >= $max) {
+                return false;
+            }
+
+            $cache->set($key, $count + 1);
+            return true;
+        } catch (\Throwable $e) {
+            debugging('local_webhookengine: concurrency check error: ' . $e->getMessage(), DEBUG_DEVELOPER);
+            return true;
+        }
+    }
+
+    /**
+     * Release a concurrency worker slot for a specific hook.
+     *
+     * @param int $hookid Hook database ID.
+     */
+    public static function release_hook_slot(int $hookid): void {
+        if ($hookid <= 0) {
+            return;
+        }
+
+        try {
+            $cache = \cache::make('local_webhookengine', 'ratelimit');
+            $key = 'concurrent_' . $hookid;
+            $count = (int) $cache->get($key);
+
+            if ($count > 1) {
+                $cache->set($key, $count - 1);
+            } else {
+                $cache->delete($key);
+            }
+        } catch (\Throwable $e) {
+            debugging('local_webhookengine: concurrency release error: ' . $e->getMessage(), DEBUG_DEVELOPER);
+        }
+    }
+
+    /**
+     * Release all concurrency slots for a hook (used during cleanup or reset).
+     *
+     * @param int $hookid Hook database ID.
+     */
+    public static function release_all_hook_slots(int $hookid): void {
+        if ($hookid <= 0) {
+            return;
+        }
+
+        try {
+            $cache = \cache::make('local_webhookengine', 'ratelimit');
+            $cache->delete('concurrent_' . $hookid);
+        } catch (\Throwable $e) {
+            debugging('local_webhookengine: concurrency clear error: ' . $e->getMessage(), DEBUG_DEVELOPER);
+        }
+    }
 }

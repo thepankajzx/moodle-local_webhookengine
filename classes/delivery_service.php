@@ -71,183 +71,202 @@ class delivery_service {
             return false;
         }
 
-        // Validate target URL before outbound network attempt.
-        if (!url_validator::validate_for_delivery($hook->url)) {
-            $delivery->status = 'failed';
-            $delivery->errorcode = 'blocked_or_invalid_url';
-            $delivery->timelastattempt = time();
+        // Circuit breaker check: if circuit is open and in active cooldown, defer delivery.
+        if (!circuit_breaker::can_dispatch($hook)) {
+            $delivery->nextattempt = (int) $hook->circuitcooldownuntil;
             $DB->update_record('local_webhookengine_delivery', $delivery);
-            $this->record_hook_failure($hook);
             return false;
         }
 
-        // Decrypt secret.
-        $secret = hook_repository::decrypt_secret($hook->secret);
-        if ($secret === false) {
-            $delivery->status = 'failed';
-            $delivery->errorcode = 'secret_unreadable';
-            $delivery->timelastattempt = time();
+        // Concurrency slot check: prevent single degraded endpoint from starving cron worker threads.
+        $maxconcurrent = (int) get_config('local_webhookengine', 'maxconcurrenthook') ?: 5;
+        if (!rate_limiter::acquire_hook_slot($hook->id, $maxconcurrent)) {
+            $delivery->nextattempt = time() + random_int(30, 60);
             $DB->update_record('local_webhookengine_delivery', $delivery);
-            $this->record_hook_failure($hook);
             return false;
         }
 
-        // Render final payload body once if not already rendered.
-        $body = $delivery->payload;
-        if (!empty($body)) {
-            $rawdata = json_decode($body, true);
-            if (is_array($rawdata) && isset($rawdata['eventname']) && !isset($rawdata['schema'])) {
-                // It's raw event data, render final envelope.
-                try {
-                    $body = payload_builder::render_envelope($delivery->uuid, $rawdata, $hook->payloadopts);
-                } catch (\Throwable $e) {
-                    $delivery->status = 'failed';
-                    $delivery->errorcode = 'template_invalid';
-                    $delivery->timelastattempt = time();
-                    $DB->update_record('local_webhookengine_delivery', $delivery);
-                    $this->record_hook_failure($hook);
-                    return false;
-                }
-                $delivery->payload = $body;
+        try {
+            // Validate target URL before outbound network attempt.
+            if (!url_validator::validate_for_delivery($hook->url)) {
+                $delivery->status = 'failed';
+                $delivery->errorcode = 'blocked_or_invalid_url';
+                $delivery->timelastattempt = time();
                 $DB->update_record('local_webhookengine_delivery', $delivery);
+                $this->record_hook_failure($hook);
+                return false;
             }
-        }
 
-        if (empty($body)) {
-            // Reject delivery execution with error - never send an empty {} body.
-            $delivery->status = 'failed';
-            if (empty($delivery->errorcode)) {
-                $delivery->errorcode = 'payload_purged_cannot_replay';
+            // Decrypt secret.
+            $secret = hook_repository::decrypt_secret($hook->secret);
+            if ($secret === false) {
+                $delivery->status = 'failed';
+                $delivery->errorcode = 'secret_unreadable';
+                $delivery->timelastattempt = time();
+                $DB->update_record('local_webhookengine_delivery', $delivery);
+                $this->record_hook_failure($hook);
+                return false;
             }
-            $delivery->timelastattempt = time();
-            $DB->update_record('local_webhookengine_delivery', $delivery);
-            return false;
-        }
 
-        // Fail-closed verification: ensure final payload is valid JSON before network dispatch.
-        $bodydecoded = @json_decode($body, true);
-        if ($bodydecoded === null) {
-            $delivery->status = 'failed';
-            $delivery->errorcode = 'template_invalid';
-            $delivery->timelastattempt = time();
-            $DB->update_record('local_webhookengine_delivery', $delivery);
-            $this->record_hook_failure($hook);
-            return false;
-        }
-
-        // Compute cryptographic SHA-256 hash of the payload body for non-repudiation audit trail.
-        $bodyhash = hash('sha256', $body);
-        $delivery->bodyhash = $bodyhash;
-
-        // Build standard headers with dual-secret grace period support.
-        $timestamp = time();
-
-        $activesecrets = [$secret];
-        if (!empty($hook->prevsecret) && !empty($hook->secretrotatedat)) {
-            $graceperiod = get_config('local_webhookengine', 'rotationgraceperiod');
-            $graceperiod = ($graceperiod !== false && $graceperiod !== '') ? (int) $graceperiod : 86400;
-            if ($graceperiod > 0 && ($timestamp - (int) $hook->secretrotatedat) < $graceperiod) {
-                $prevsecret = hook_repository::decrypt_secret($hook->prevsecret);
-                if ($prevsecret !== false && !empty($prevsecret)) {
-                    $activesecrets[] = $prevsecret;
+            // Render final payload body once if not already rendered.
+            $body = $delivery->payload;
+            if (!empty($body)) {
+                $rawdata = json_decode($body, true);
+                if (is_array($rawdata) && isset($rawdata['eventname']) && !isset($rawdata['schema'])) {
+                    // It's raw event data, render final envelope.
+                    try {
+                        $body = payload_builder::render_envelope($delivery->uuid, $rawdata, $hook->payloadopts);
+                    } catch (\Throwable $e) {
+                        $delivery->status = 'failed';
+                        $delivery->errorcode = 'template_invalid';
+                        $delivery->timelastattempt = time();
+                        $DB->update_record('local_webhookengine_delivery', $delivery);
+                        $this->record_hook_failure($hook);
+                        return false;
+                    }
+                    $delivery->payload = $body;
+                    $DB->update_record('local_webhookengine_delivery', $delivery);
                 }
             }
-        }
 
-        $signature = signer::sign_multi($delivery->uuid, $timestamp, $body, $activesecrets);
+            if (empty($body)) {
+                // Reject delivery execution with error - never send an empty {} body.
+                $delivery->status = 'failed';
+                if (empty($delivery->errorcode)) {
+                    $delivery->errorcode = 'payload_purged_cannot_replay';
+                }
+                $delivery->timelastattempt = time();
+                $DB->update_record('local_webhookengine_delivery', $delivery);
+                return false;
+            }
 
-        $eventtype = payload_builder::extract_event_type($delivery->eventname);
+            // Fail-closed verification: ensure final payload is valid JSON before network dispatch.
+            $bodydecoded = @json_decode($body, true);
+            if ($bodydecoded === null) {
+                $delivery->status = 'failed';
+                $delivery->errorcode = 'template_invalid';
+                $delivery->timelastattempt = time();
+                $DB->update_record('local_webhookengine_delivery', $delivery);
+                $this->record_hook_failure($hook);
+                return false;
+            }
 
-        $headers = [
-            'Content-Type: application/json',
-            'User-Agent: WebhookEngine/1.0.0',
-            'X-Webhook-Event: ' . $eventtype,
-            'webhook-id: ' . $delivery->uuid,
-            'webhook-timestamp: ' . $timestamp,
-            'webhook-signature: ' . $signature,
-        ];
+            // Compute cryptographic SHA-256 hash of the payload body for non-repudiation audit trail.
+            $bodyhash = hash('sha256', $body);
+            $delivery->bodyhash = $bodyhash;
 
-        // Append custom headers if defined.
-        if (!empty($hook->headers)) {
-            $customheaders = hook_repository::decrypt_headers($hook->headers);
-            if (is_array($customheaders)) {
-                foreach ($customheaders as $name => $val) {
-                    $headers[] = $name . ': ' . $val;
+            // Build standard headers with dual-secret grace period support.
+            $timestamp = time();
+
+            $activesecrets = [$secret];
+            if (!empty($hook->prevsecret) && !empty($hook->secretrotatedat)) {
+                $graceperiod = get_config('local_webhookengine', 'rotationgraceperiod');
+                $graceperiod = ($graceperiod !== false && $graceperiod !== '') ? (int) $graceperiod : 86400;
+                if ($graceperiod > 0 && ($timestamp - (int) $hook->secretrotatedat) < $graceperiod) {
+                    $prevsecret = hook_repository::decrypt_secret($hook->prevsecret);
+                    if ($prevsecret !== false && !empty($prevsecret)) {
+                        $activesecrets[] = $prevsecret;
+                    }
                 }
             }
-        }
 
-        $timeout = $hook->timeout ?: 10;
-        $response = $httpclient->send($hook->url, $body, $headers, $timeout);
+            $signature = signer::sign_multi($delivery->uuid, $timestamp, $body, $activesecrets);
 
-        $delivery->attempts++;
-        $delivery->timelastattempt = time();
-        $delivery->duration = $response->duration;
-        $delivery->httpstatus = $response->status;
+            $eventtype = payload_builder::extract_event_type($delivery->eventname);
 
-        $status = $response->status;
+            $headers = [
+                'Content-Type: application/json',
+                'User-Agent: WebhookEngine/1.0.0',
+                'X-Webhook-Event: ' . $eventtype,
+                'webhook-id: ' . $delivery->uuid,
+                'webhook-timestamp: ' . $timestamp,
+                'webhook-signature: ' . $signature,
+            ];
 
-        if ($status >= 200 && $status < 300) {
-            // Success.
-            $delivery->status = 'success';
-            $delivery->errorcode = null;
-            $delivery->payload = null; // Clean up payload upon confirmed delivery.
+            // Append custom headers if defined.
+            if (!empty($hook->headers)) {
+                $customheaders = hook_repository::decrypt_headers($hook->headers);
+                if (is_array($customheaders)) {
+                    foreach ($customheaders as $name => $val) {
+                        $headers[] = $name . ': ' . $val;
+                    }
+                }
+            }
+
+            $timeout = $hook->timeout ?: 10;
+            $response = $httpclient->send($hook->url, $body, $headers, $timeout);
+
+            $delivery->attempts++;
+            $delivery->timelastattempt = time();
+            $delivery->duration = $response->duration;
+            $delivery->httpstatus = $response->status;
+
+            $status = $response->status;
+
+            if ($status >= 200 && $status < 300) {
+                // Success.
+                $delivery->status = 'success';
+                $delivery->errorcode = null;
+                $delivery->payload = null; // Clean up payload upon confirmed delivery.
+                $delivery->nextattempt = null;
+                $DB->update_record('local_webhookengine_delivery', $delivery);
+
+                $this->record_hook_success($hook);
+                return true;
+            }
+
+            // Failure handling.
+            if ($status >= 300 && $status < 400) {
+                $delivery->status = 'failed';
+                $delivery->errorcode = 'redirect_not_followed';
+                $delivery->nextattempt = null;
+                $DB->update_record('local_webhookengine_delivery', $delivery);
+                $this->record_hook_failure($hook);
+                return false;
+            }
+
+            // Determine if retryable.
+            $isretryable = ($status == 408
+                || $status == 425
+                || $status == 429
+                || $status >= 500
+                || $status == 0
+                || $response->errno > 0);
+
+            if ($isretryable && $delivery->attempts < $hook->maxattempts) {
+                // Schedule retry.
+                $delay = $this->calculate_retry_delay($delivery->attempts, $response->retryafter);
+                $delivery->status = 'retrying';
+                $delivery->errorcode = $response->errno > 0 ? 'network_error_' . $response->errno : 'http_' . $status;
+                $delivery->nextattempt = time() + $delay;
+                $DB->update_record('local_webhookengine_delivery', $delivery);
+
+                // Queue ad-hoc task for next run.
+                $task = new \local_webhookengine\task\send_delivery();
+                $task->set_custom_data(['deliveryid' => $delivery->id]);
+                $task->set_next_run_time($delivery->nextattempt);
+                \core\task\manager::queue_adhoc_task($task, true);
+
+                return false;
+            }
+
+            // Terminal failure.
+            $delivery->status = 'failed';
+            if ($status >= 400 && $status < 500 && !$isretryable) {
+                $delivery->errorcode = 'http_' . $status;
+            } else if ($delivery->attempts >= $hook->maxattempts) {
+                $delivery->errorcode = 'max_attempts_exceeded';
+            } else {
+                $delivery->errorcode = $response->errno > 0 ? 'network_error_' . $response->errno : 'delivery_failed';
+            }
             $delivery->nextattempt = null;
             $DB->update_record('local_webhookengine_delivery', $delivery);
 
-            $this->record_hook_success($hook);
-            return true;
-        }
-
-        // Failure handling.
-        if ($status >= 300 && $status < 400) {
-            $delivery->status = 'failed';
-            $delivery->errorcode = 'redirect_not_followed';
-            $delivery->nextattempt = null;
-            $DB->update_record('local_webhookengine_delivery', $delivery);
             $this->record_hook_failure($hook);
             return false;
+        } finally {
+            rate_limiter::release_hook_slot($hook->id);
         }
-
-        // Determine if retryable.
-        $isretryable = ($status == 408
-            || $status == 425
-            || $status == 429
-            || $status >= 500
-            || $status == 0
-            || $response->errno > 0);
-
-        if ($isretryable && $delivery->attempts < $hook->maxattempts) {
-            // Schedule retry.
-            $delay = $this->calculate_retry_delay($delivery->attempts, $response->retryafter);
-            $delivery->status = 'retrying';
-            $delivery->errorcode = $response->errno > 0 ? 'network_error_' . $response->errno : 'http_' . $status;
-            $delivery->nextattempt = time() + $delay;
-            $DB->update_record('local_webhookengine_delivery', $delivery);
-
-            // Queue ad-hoc task for next run.
-            $task = new \local_webhookengine\task\send_delivery();
-            $task->set_custom_data(['deliveryid' => $delivery->id]);
-            $task->set_next_run_time($delivery->nextattempt);
-            \core\task\manager::queue_adhoc_task($task, true);
-
-            return false;
-        }
-
-        // Terminal failure.
-        $delivery->status = 'failed';
-        if ($status >= 400 && $status < 500 && !$isretryable) {
-            $delivery->errorcode = 'http_' . $status;
-        } else if ($delivery->attempts >= $hook->maxattempts) {
-            $delivery->errorcode = 'max_attempts_exceeded';
-        } else {
-            $delivery->errorcode = $response->errno > 0 ? 'network_error_' . $response->errno : 'delivery_failed';
-        }
-        $delivery->nextattempt = null;
-        $DB->update_record('local_webhookengine_delivery', $delivery);
-
-        $this->record_hook_failure($hook);
-        return false;
     }
 
     /**
@@ -276,13 +295,7 @@ class delivery_service {
      * @param object $hook Hook record.
      */
     private function record_hook_success(object $hook): void {
-        global $DB;
-        $update = (object) [
-            'id' => $hook->id,
-            'failstreak' => 0,
-            'lastsuccess' => time(),
-        ];
-        $DB->update_record('local_webhookengine_hook', $update);
+        circuit_breaker::record_success($hook);
     }
 
     /**
@@ -291,12 +304,6 @@ class delivery_service {
      * @param object $hook Hook record.
      */
     private function record_hook_failure(object $hook): void {
-        global $DB;
-        $update = (object) [
-            'id' => $hook->id,
-            'failstreak' => $hook->failstreak + 1,
-            'lastfailure' => time(),
-        ];
-        $DB->update_record('local_webhookengine_hook', $update);
+        circuit_breaker::record_failure($hook);
     }
 }
