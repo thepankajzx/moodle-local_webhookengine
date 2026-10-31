@@ -62,6 +62,17 @@ if ($hassiteconfig || has_capability('local/webhookengine:manage', context_syste
         0
     ));
 
+    // Internal Host / Subnet Allowlist.
+    $settingspage->add(new admin_setting_configtextarea(
+        'local_webhookengine/allowedinternalhosts',
+        get_string('setting_allowedinternalhosts', 'local_webhookengine'),
+        get_string('setting_allowedinternalhosts_desc', 'local_webhookengine'),
+        '',
+        PARAM_RAW,
+        60,
+        5
+    ));
+
     // Default Request Timeout.
     $settingspage->add(new admin_setting_configtext(
         'local_webhookengine/defaulttimeout',

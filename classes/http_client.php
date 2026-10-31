@@ -37,8 +37,21 @@ class http_client {
         global $CFG;
         require_once($CFG->libdir . '/filelib.php');
 
-        $allowhttp = (bool) get_config('local_webhookengine', 'allowinsecurehttp');
-        $curl = new \curl(['ignoresecurity' => $allowhttp]);
+        // Pre-flight DNS resolution, SSRF validation, and IP pinning configuration.
+        $validation = url_validator::resolve_and_validate_for_delivery($url);
+        if (!$validation['valid']) {
+            return (object) [
+                'status' => 0,
+                'errno' => 7, // CURLE_COULDNT_CONNECT.
+                'error' => 'Blocked by SSRF policy: ' . ($validation['error'] ?? 'blocked_url'),
+                'duration' => 0,
+                'retryafter' => null,
+            ];
+        }
+
+        // Only allow internal destinations to bypass core curl security helper if explicitly allowlisted.
+        $ignoresecurity = !empty($validation['is_internal_allowed']);
+        $curl = new \curl(['ignoresecurity' => $ignoresecurity]);
         $curl->setHeader($headers);
 
         $options = [
@@ -48,6 +61,11 @@ class http_client {
             'CURLOPT_SSL_VERIFYPEER' => 1,
             'CURLOPT_SSL_VERIFYHOST' => 2,
         ];
+
+        // IP pinning via CURLOPT_RESOLVE prevents DNS rebinding TOCTOU attacks.
+        if (!empty($validation['resolve_entry'])) {
+            $options['CURLOPT_RESOLVE'] = [$validation['resolve_entry']];
+        }
 
         $starttime = microtime(true);
         $response = $curl->post($url, $body, $options);
