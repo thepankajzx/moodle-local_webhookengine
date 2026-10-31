@@ -5,6 +5,9 @@ All notable changes to the `local_webhookengine` plugin will be documented in th
 ## [1.0.3] - 2026-11-01
 
 ### Added
+- Added command-line administration tool (`cli/webhook_ctl.php`) for diagnostic fleet health checks (`--health`), webhook listings (`--list`), circuit breaker reset (`--reset-circuit=ID`), and transactional configuration export/import (`--export`, `--import`).
+- Exported configurations strictly redact signing secrets (`[REDACTED_CLI_MANAGED_KEY]`) and custom authorization headers, preventing key exfiltration in automated CI/CD and server backups.
+- Import validates target URLs against SSRF policies and generates fresh 32-byte cryptographic signing secrets within database transactions.
 - Implemented real-time performance telemetry service (`classes/telemetry.php`) computing rolling 24-hour success rates, p95 delivery latency percentiles, queue depth, and circuit breaker health.
 - Backed by short-TTL MUC application cache (`local_webhookengine/ratelimit`) to avoid production database query load during high-traffic admin dashboard views.
 - Upgraded administrative health panel (`templates/health_panel.mustache`) with rolling 24h success rates, p95 latencies, and circuit breaker trip counters.
