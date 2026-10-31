@@ -4,11 +4,21 @@ All notable changes to the `local_webhookengine` plugin will be documented in th
 
 ## [1.0.3] - 2026-11-01
 
+### Added
+- Implemented high-throughput aggregated drop ledger `{local_webhookengine_drop_ledger}` with atomic 8-slot sharding to eliminate silent event drops with zero lock contention.
+- Introduced centralized reason registry (`\local_webhookengine\reasons`) classifying drops (`rate_limited`, `queue_overload`, `hook_paused`, `killswitch_enabled`, `hook_backlog_exceeded`, `hook_disabled_or_missing`, `observer_error`).
+- Upgraded event map to v2 (`map_v2`) tracking paused hook status, enabling precise drop recording when events fire during planned webhook downtime.
+- Added noisy-neighbor backlog guard (`rate_limiter::is_hook_backlog_exceeded`) to protect shared queue bandwidth from downstream outage storming.
+- Added automated orphaned delivery sweeper in `task\check_health` to rescue stuck overdue deliveries without relying on manual intervention.
+- Exposed live drop counters in the administration health panel and per-hook status badges in `manage.php`.
+- Registered `ratelimit_alert` message provider notifying site administrators when an endpoint reaches rate limit thresholds.
+- Comprehensive PHPUnit test coverage (`tests/drop_ledger_test.php`, `tests/hook_repository_test.php`, `tests/delivery_replay_test.php`) and automated multi-environment GitHub Actions CI matrix (`.github/workflows/ci.yml`).
+
 ### Fixed
 - Fixed critical header-wipe regression where pausing or resuming a webhook deleted stored encrypted custom authorization headers. Introduced surgical `hook_repository::set_hook_status()` method to guarantee credential isolation during lifecycle state transitions.
 - Hardened webhook replay safety: strictly reject replaying deliveries whose payload has been purged under GDPR data retention policies (`payload_purged_cannot_replay`), preventing dispatch of synthetic `{}` empty bodies over the network.
 - Enhanced replay idempotency: manual replays reset attempt counters to 0 while preserving RFC 4122 delivery UUIDs for downstream deduplication.
-- Added comprehensive unit test coverage (`tests/hook_repository_test.php`, `tests/delivery_replay_test.php`) verifying header preservation and replay payload integrity.
+- Hardened rate limiter and observer fail-open error isolation: cache backend degradation or observer exceptions never abort student activity.
 
 ## [1.0.2] - 2026-10-27
 
