@@ -165,6 +165,15 @@ if ($hassiteconfig || has_capability('local/webhookengine:manage', context_syste
         PARAM_INT
     ));
 
+    // Alert Notification Email Address (DevOps / On-call distribution list).
+    $settingspage->add(new admin_setting_configtext(
+        'local_webhookengine/alertemail',
+        get_string('setting_alertemail', 'local_webhookengine'),
+        get_string('setting_alertemail_desc', 'local_webhookengine'),
+        '',
+        PARAM_EMAIL
+    ));
+
     // Automated Log Archiving Enable Switch.
     $settingspage->add(new admin_setting_configcheckbox(
         'local_webhookengine/enableautoarchive',

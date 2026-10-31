@@ -210,24 +210,6 @@ class circuit_breaker {
             'cooldown' => $cooldownmin,
         ]);
 
-        $admins = get_admins();
-        $adminuser = reset($admins);
-        if (!$adminuser) {
-            return;
-        }
-
-        $eventdata = new \core\message\message();
-        $eventdata->component = 'local_webhookengine';
-        $eventdata->name = 'circuit_breaker_alert';
-        $eventdata->userfrom = \core_user::get_noreply_user();
-        $eventdata->userto = $adminuser;
-        $eventdata->subject = $subject;
-        $eventdata->fullmessage = $message;
-        $eventdata->fullmessageformat = FORMAT_PLAIN;
-        $eventdata->fullmessagehtml = '<p>' . s($message) . '</p>';
-        $eventdata->smallmessage = $subject;
-        $eventdata->notification = 1;
-
-        message_send($eventdata);
+        alert_dispatcher::dispatch('circuit_breaker_alert', $subject, $message);
     }
 }

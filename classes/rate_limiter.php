@@ -156,28 +156,14 @@ class rate_limiter {
             // Cooldown for 15 minutes.
             $cache->set($cooldownkey, 1);
 
-            $admins = get_admins();
-            if (empty($admins)) {
-                return;
-            }
-            $primaryadmin = reset($admins);
-
-            $message = new \core\message\message();
-            $message->component = 'local_webhookengine';
-            $message->name = 'ratelimit_alert';
-            $message->userfrom = \core_user::get_noreply_user();
-            $message->userto = $primaryadmin;
-            $message->subject = get_string('ratelimit_alert_subject', 'local_webhookengine', $hook->name);
-            $message->fullmessage = get_string('ratelimit_alert_body', 'local_webhookengine', (object) [
+            $subject = get_string('ratelimit_alert_subject', 'local_webhookengine', $hook->name);
+            $message = get_string('ratelimit_alert_body', 'local_webhookengine', (object) [
                 'hookname' => $hook->name,
                 'hookid' => $hook->id,
                 'time' => userdate(time()),
             ]);
-            $message->fullmessageformat = FORMAT_PLAIN;
-            $message->fullmessagehtml = '';
-            $message->smallmessage = get_string('ratelimit_alert_subject', 'local_webhookengine', $hook->name);
-            $message->notification = 1;
-            message_send($message);
+
+            alert_dispatcher::dispatch('ratelimit_alert', $subject, $message);
         } catch (\Throwable $e) {
             debugging('local_webhookengine: failed to trigger rate limit alert: ' . $e->getMessage(), DEBUG_DEVELOPER);
         }

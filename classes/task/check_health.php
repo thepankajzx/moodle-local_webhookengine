@@ -109,34 +109,14 @@ class check_health extends \core\task\scheduled_task {
      * @param string $reason Human-readable explanation.
      */
     private function notify_admins(object $hook, string $reason): void {
-        $admins = get_admins();
-        if (empty($admins)) {
-            return;
-        }
-
-        $adminuser = reset($admins);
         $manageurl = new \moodle_url('/local/webhookengine/manage.php');
-
-        $message = new \core\message\message();
-        $message->component = 'local_webhookengine';
-        $message->name = 'hookpaused';
-        $message->userfrom = \core_user::get_noreply_user();
-        $message->subject = get_string('message_hookpaused_subject', 'local_webhookengine', $hook->name);
-        $message->fullmessage = get_string('message_hookpaused_body', 'local_webhookengine', [
+        $subject = get_string('message_hookpaused_subject', 'local_webhookengine', $hook->name);
+        $message = get_string('message_hookpaused_body', 'local_webhookengine', [
             'name' => $hook->name,
             'reason' => $reason,
             'url' => $manageurl->out(false),
         ]);
-        $message->fullmessageformat = FORMAT_PLAIN;
-        $message->fullmessagehtml = '';
-        $message->smallmessage = get_string('message_hookpaused_small', 'local_webhookengine', $hook->name);
-        $message->notification = 1;
-        $message->contexturl = $manageurl->out(false);
-        $message->contexturlname = get_string('manage_hooks', 'local_webhookengine');
 
-        foreach ($admins as $admin) {
-            $message->userto = $admin;
-            message_send($message);
-        }
+        \local_webhookengine\alert_dispatcher::dispatch('hookpaused', $subject, $message);
     }
 }

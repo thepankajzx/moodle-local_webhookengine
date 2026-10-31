@@ -5,6 +5,8 @@ All notable changes to the `local_webhookengine` plugin will be documented in th
 ## [1.0.3] - 2026-11-01
 
 ### Added
+- Implemented enterprise dual-channel notification dispatcher (`classes/alert_dispatcher.php`) routing critical system alerts (`circuit_breaker_alert`, `ratelimit_alert`, `health_check_alert`) simultaneously to on-platform Moodle administrators and off-platform external DevOps/SRE email addresses (`alertemail`). Ensures infrastructure on-call teams are alerted instantly during downstream outages without requiring an active Moodle session.
+- Added `alertemail` administrative setting in `settings.php` supporting custom operational mailboxes, distribution lists, and automated incident response ingest addresses.
 - Added command-line administration tool (`cli/webhook_ctl.php`) for diagnostic fleet health checks (`--health`), webhook listings (`--list`), circuit breaker reset (`--reset-circuit=ID`), and transactional configuration export/import (`--export`, `--import`).
 - Exported configurations strictly redact signing secrets (`[REDACTED_CLI_MANAGED_KEY]`) and custom authorization headers, preventing key exfiltration in automated CI/CD and server backups.
 - Import validates target URLs against SSRF policies and generates fresh 32-byte cryptographic signing secrets within database transactions.
