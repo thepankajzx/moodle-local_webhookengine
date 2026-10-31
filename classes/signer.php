@@ -68,7 +68,31 @@ class signer {
     }
 
     /**
+     * Computes the Standard Webhooks signature header string for one or multiple secrets.
+     *
+     * @param string $webhookid Delivery UUID
+     * @param int $timestamp Unix timestamp
+     * @param string $payload JSON body
+     * @param array|string $secrets Primary signing secret or list of active secrets
+     * @return string Space-separated signature header value, e.g. "v1,sig1 v1,sig2"
+     */
+    public static function sign_multi(string $webhookid, int $timestamp, string $payload, $secrets): string {
+        if (!is_array($secrets)) {
+            $secrets = [$secrets];
+        }
+        $sigs = [];
+        foreach ($secrets as $sec) {
+            if (!empty($sec)) {
+                $sigs[] = self::sign($webhookid, $timestamp, $payload, (string) $sec);
+            }
+        }
+        return implode(' ', array_unique($sigs));
+    }
+
+    /**
      * Verifies a signature string against the expected payload and secret.
+     *
+     * Handles both single signatures and space-delimited Standard Webhooks multi-signatures.
      *
      * @param string $signatureheader The webhook-signature header
      * @param string $webhookid The webhook-id header
@@ -85,6 +109,12 @@ class signer {
         string $secret
     ): bool {
         $expected = self::sign($webhookid, $timestamp, $payload, $secret);
-        return hash_equals($expected, $signatureheader);
+        $signatures = preg_split('/\s+/', trim($signatureheader));
+        foreach ($signatures as $sig) {
+            if (hash_equals($expected, $sig)) {
+                return true;
+            }
+        }
+        return false;
     }
 }

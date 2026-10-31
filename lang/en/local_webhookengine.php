@@ -222,6 +222,8 @@ $string['setting_payloadretention'] = 'Payload data retention (days)';
 $string['setting_payloadretention_desc'] = 'Number of days to retain payload content before clearing to conserve space.';
 $string['setting_ratecapperhook'] = 'Per-hook rate limit (events/minute)';
 $string['setting_ratecapperhook_desc'] = 'Maximum number of events a single hook will process per minute during event surges.';
+$string['setting_rotationgraceperiod'] = 'Secret rotation grace period (seconds)';
+$string['setting_rotationgraceperiod_desc'] = 'How long the previous signing secret continues to produce a valid secondary signature after rotation (default: 86400 = 24 hours). Allows downstream receivers to update their secrets without delivery interruption. Set to 0 to disable grace period.';
 $string['settings'] = 'Settings';
 $string['signing_secret'] = 'Signing secret';
 $string['status'] = 'Status';

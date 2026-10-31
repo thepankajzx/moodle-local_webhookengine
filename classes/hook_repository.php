@@ -396,13 +396,21 @@ class hook_repository {
      */
     public static function rotate_secret(int $id): string {
         global $DB;
+        $hook = $DB->get_record('local_webhookengine_hook', ['id' => $id]);
+        if (!$hook) {
+            throw new \coding_exception('Hook not found for secret rotation: ' . $id);
+        }
+
         $rawsecret = self::generate_raw_secret();
         $encrypted = self::encrypt_secret($rawsecret);
+        $now = time();
 
         $update = (object) [
             'id' => $id,
+            'prevsecret' => $hook->secret,
+            'secretrotatedat' => $now,
             'secret' => $encrypted,
-            'timemodified' => time(),
+            'timemodified' => $now,
         ];
         $DB->update_record('local_webhookengine_hook', $update);
         return $rawsecret;

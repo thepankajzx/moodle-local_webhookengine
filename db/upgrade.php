@@ -90,5 +90,20 @@ function xmldb_local_webhookengine_upgrade(int $oldversion): bool {
         upgrade_plugin_savepoint(true, 2026110101, 'local', 'webhookengine');
     }
 
+    if ($oldversion < 2026110102) {
+        $table = new xmldb_table('local_webhookengine_hook');
+        $field1 = new xmldb_field('prevsecret', XMLDB_TYPE_TEXT, null, null, null, null, null, 'secret');
+        $field2 = new xmldb_field('secretrotatedat', XMLDB_TYPE_INTEGER, '10', null, null, null, null, 'prevsecret');
+
+        if (!$dbman->field_exists($table, $field1)) {
+            $dbman->add_field($table, $field1);
+        }
+        if (!$dbman->field_exists($table, $field2)) {
+            $dbman->add_field($table, $field2);
+        }
+
+        upgrade_plugin_savepoint(true, 2026110102, 'local', 'webhookengine');
+    }
+
     return true;
 }

@@ -139,9 +139,22 @@ class delivery_service {
         $bodyhash = hash('sha256', $body);
         $delivery->bodyhash = $bodyhash;
 
-        // Build standard headers.
+        // Build standard headers with dual-secret grace period support.
         $timestamp = time();
-        $signature = signer::sign($delivery->uuid, $timestamp, $body, $secret);
+
+        $activesecrets = [$secret];
+        if (!empty($hook->prevsecret) && !empty($hook->secretrotatedat)) {
+            $graceperiod = get_config('local_webhookengine', 'rotationgraceperiod');
+            $graceperiod = ($graceperiod !== false && $graceperiod !== '') ? (int) $graceperiod : 86400;
+            if ($graceperiod > 0 && ($timestamp - (int) $hook->secretrotatedat) < $graceperiod) {
+                $prevsecret = hook_repository::decrypt_secret($hook->prevsecret);
+                if ($prevsecret !== false && !empty($prevsecret)) {
+                    $activesecrets[] = $prevsecret;
+                }
+            }
+        }
+
+        $signature = signer::sign_multi($delivery->uuid, $timestamp, $body, $activesecrets);
 
         $eventtype = payload_builder::extract_event_type($delivery->eventname);
 

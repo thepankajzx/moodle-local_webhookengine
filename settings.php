@@ -129,6 +129,15 @@ if ($hassiteconfig || has_capability('local/webhookengine:manage', context_syste
         PARAM_INT
     ));
 
+    // Secret Rotation Grace Period (seconds).
+    $settingspage->add(new admin_setting_configtext(
+        'local_webhookengine/rotationgraceperiod',
+        get_string('setting_rotationgraceperiod', 'local_webhookengine'),
+        get_string('setting_rotationgraceperiod_desc', 'local_webhookengine'),
+        86400,
+        PARAM_INT
+    ));
+
     // Automated Log Archiving Enable Switch.
     $settingspage->add(new admin_setting_configcheckbox(
         'local_webhookengine/enableautoarchive',
