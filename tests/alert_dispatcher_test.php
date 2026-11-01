@@ -53,8 +53,20 @@ final class alert_dispatcher_test extends \advanced_testcase {
 
         $messages = $sink->get_messages();
         $this->assertNotEmpty($messages);
-        $this->assertEquals('devops@example.com', $messages[0]->to);
-        $this->assertEquals('Test Alert Subject', $messages[0]->subject);
+        $recipients = array_map(function ($m) {
+            return $m->to;
+        }, $messages);
+        $this->assertContains('devops@example.com', $recipients);
+
+        $found = false;
+        foreach ($messages as $msg) {
+            if ($msg->to === 'devops@example.com') {
+                $this->assertEquals('Test Alert Subject', $msg->subject);
+                $found = true;
+                break;
+            }
+        }
+        $this->assertTrue($found);
 
         $sink->close();
     }
