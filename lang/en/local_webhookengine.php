@@ -294,6 +294,7 @@ $string['use_mtls'] = 'Enable Mutual TLS (mTLS) client certificate';
 $string['use_mtls_help'] = 'When enabled, outbound deliveries to this endpoint will present the server-wide client certificate and private key configured in plugin settings during the TLS handshake.';
 $string['user_id'] = 'User ID';
 $string['uuid'] = 'Delivery UUID';
+$string['warning_outbound_proxy_notice'] = 'Outbound HTTP proxy ({$a->proxyhost}{$a->proxyport}) is active in Moodle. Note: cURL IP pinning does not apply when routing through a proxy; your proxy must enforce network egress and SSRF policy.';
 $string['webhookengine:exportlogs'] = 'Export webhook delivery audit logs';
 $string['webhookengine:exportpersonaldata'] = 'Export webhook payloads containing personal data';
 $string['webhookengine:manage'] = 'Manage and configure webhook endpoints';

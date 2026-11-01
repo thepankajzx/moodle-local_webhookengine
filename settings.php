@@ -62,6 +62,22 @@ if ($hassiteconfig || has_capability('local/webhookengine:manage', context_syste
         0
     ));
 
+    // Outbound proxy notice if active in Moodle configuration.
+    if (!empty($CFG->proxyhost)) {
+        $proxyinfo = (object) [
+            'proxyhost' => $CFG->proxyhost,
+            'proxyport' => !empty($CFG->proxyport) ? ':' . $CFG->proxyport : '',
+        ];
+        $settingspage->add(new admin_setting_heading(
+            'local_webhookengine/proxy_warning',
+            '',
+            \html_writer::div(
+                get_string('warning_outbound_proxy_notice', 'local_webhookengine', $proxyinfo),
+                'alert alert-warning'
+            )
+        ));
+    }
+
     // Internal Host / Subnet Allowlist.
     $settingspage->add(new admin_setting_configtextarea(
         'local_webhookengine/allowedinternalhosts',

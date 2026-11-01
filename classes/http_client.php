@@ -104,6 +104,9 @@ class http_client {
         ];
 
         // IP pinning via CURLOPT_RESOLVE prevents DNS rebinding TOCTOU attacks.
+        // Note: When an outbound HTTP proxy ($CFG->proxyhost) is active in Moodle, cURL routes requests
+        // through the proxy and local CURLOPT_RESOLVE IP pinning does not apply; the proxy gateway must
+        // enforce egress filtering and SSRF policies.
         if (!empty($validation['resolve_entry'])) {
             $options['CURLOPT_RESOLVE'] = [$validation['resolve_entry']];
         }

@@ -25,6 +25,206 @@ namespace local_webhookengine;
  */
 class url_validator {
     /**
+     * Parse and retrieve all non-empty, non-comment lines from allowedinternalhosts setting.
+     *
+     * @return array Clean allowlist entries.
+     */
+    public static function get_allowed_internal_entries(): array {
+        $allowlistconfig = (string) get_config('local_webhookengine', 'allowedinternalhosts');
+        if (trim($allowlistconfig) === '') {
+            return [];
+        }
+
+        $lines = preg_split('/[\r\n,]+/', $allowlistconfig);
+        $cleanlines = [];
+        foreach ($lines as $line) {
+            $trimmed = trim(explode('#', $line)[0]);
+            if ($trimmed !== '') {
+                $cleanlines[] = $trimmed;
+            }
+        }
+        return $cleanlines;
+    }
+
+    /**
+     * Check if an IP address is explicitly typed as an exact IP address entry in allowedinternalhosts.
+     *
+     * @param string $ip IP address to check.
+     * @return bool True if explicitly typed as an exact IP, false otherwise.
+     */
+    public static function is_ip_explicitly_typed_in_allowlist(string $ip): bool {
+        $clean = strtolower(trim($ip, '[]'));
+        $entries = self::get_allowed_internal_entries();
+        foreach ($entries as $entry) {
+            $entryclean = strtolower(trim($entry, '[]'));
+            if (filter_var($entryclean, FILTER_VALIDATE_IP)) {
+                if ($entryclean === $clean || @inet_pton($entryclean) === @inet_pton($clean)) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Check if an IP address belongs to an allowlisted CIDR subnet or exact IP in allowedinternalhosts.
+     *
+     * @param string $ip IP address to check.
+     * @return bool True if in allowlisted subnet or matches exact IP entry.
+     */
+    public static function is_ip_in_allowed_internal_subnets_or_ips(string $ip): bool {
+        global $CFG;
+        require_once($CFG->libdir . '/filelib.php');
+
+        $clean = trim($ip, '[]');
+        $entries = self::get_allowed_internal_entries();
+        foreach ($entries as $entry) {
+            if (strpos($entry, '/') !== false) {
+                if (\core\ip_utils::is_ip_in_subnet_list($clean, $entry)) {
+                    return true;
+                }
+            } else if (filter_var($entry, FILTER_VALIDATE_IP)) {
+                if (strcasecmp(trim($entry, '[]'), $clean) === 0) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Check if an IP address belongs to standard private RFC 1918 / RFC 4193 network ranges.
+     *
+     * Excludes loopback, link-local, and cloud metadata IPs.
+     *
+     * @param string $ip IP address to check.
+     * @return bool True if standard private IP, false otherwise.
+     */
+    public static function is_standard_private_ip(string $ip): bool {
+        if (!filter_var($ip, FILTER_VALIDATE_IP)) {
+            return false;
+        }
+
+        // Never loopback or metadata.
+        if (
+            str_starts_with($ip, '127.') || $ip === '::1' || str_starts_with($ip, '169.254.')
+            || self::is_cloud_metadata_ip($ip)
+        ) {
+            return false;
+        }
+
+        $long = ip2long($ip);
+        if ($long !== false) {
+            // RFC 1918: 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16.
+            if ($long >= ip2long('10.0.0.0') && $long <= ip2long('10.255.255.255')) {
+                return true;
+            }
+            if ($long >= ip2long('172.16.0.0') && $long <= ip2long('172.31.255.255')) {
+                return true;
+            }
+            if ($long >= ip2long('192.168.0.0') && $long <= ip2long('192.168.255.255')) {
+                return true;
+            }
+            return false;
+        }
+
+        // IPv6 ULA (fc00::/7 except metadata).
+        $lowered = strtolower(trim($ip, '[]'));
+        if (str_starts_with($lowered, 'fc') || str_starts_with($lowered, 'fd')) {
+            return !self::is_cloud_metadata_ip($ip);
+        }
+
+        return false;
+    }
+
+    /**
+     * Verify that an IP address resolved from an allowlisted internal hostname is safe.
+     *
+     * Metadata IPs (169.254.169.254, fd00:ec2::254) are NEVER allowed via hostname resolution,
+     * even if the hostname is allowlisted, unless explicitly typed as an exact IP address.
+     *
+     * @param string $ip Resolved IP address.
+     * @return bool True if resolved IP is permitted, false otherwise.
+     */
+    public static function verify_internal_resolved_ip(string $ip): bool {
+        if (!filter_var($ip, FILTER_VALIDATE_IP)) {
+            return false;
+        }
+
+        // Metadata IPs are NEVER allowed via hostname resolution unless explicitly typed as an IP.
+        if (self::is_cloud_metadata_ip($ip)) {
+            return self::is_ip_explicitly_typed_in_allowlist($ip);
+        }
+
+        // Loopback is never allowed via internal hostname resolution unless explicitly typed.
+        if (str_starts_with($ip, '127.') || $ip === '::1') {
+            return self::is_ip_explicitly_typed_in_allowlist($ip);
+        }
+
+        // IP explicitly in an allowlisted CIDR or exact IP in allowedinternalhosts.
+        if (self::is_ip_in_allowed_internal_subnets_or_ips($ip)) {
+            return true;
+        }
+
+        // Standard private network ranges (RFC 1918 / RFC 4193).
+        if (self::is_standard_private_ip($ip)) {
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
+     * Check if an IP address is a multicast address.
+     *
+     * IPv4: 224.0.0.0/4 (224.0.0.0 to 239.255.255.255).
+     * IPv6: ff00::/8.
+     *
+     * @param string $ip IP address.
+     * @return bool True if multicast, false otherwise.
+     */
+    public static function is_multicast_ip(string $ip): bool {
+        $long = ip2long($ip);
+        if ($long !== false) {
+            return ($long >= ip2long('224.0.0.0') && $long <= ip2long('239.255.255.255'));
+        }
+        $lowered = strtolower(trim($ip, '[]'));
+        return str_starts_with($lowered, 'ff');
+    }
+
+    /**
+     * Check if an IP address is a known cloud metadata endpoint.
+     *
+     * @param string $ip IP address.
+     * @return bool True if cloud metadata IP, false otherwise.
+     */
+    public static function is_cloud_metadata_ip(string $ip): bool {
+        $clean = strtolower(trim($ip, '[]'));
+        if ($clean === '169.254.169.254' || $clean === '169.254.169.253') {
+            return true;
+        }
+        // AWS IMDSv6 endpoint address.
+        if ($clean === 'fd00:ec2::254') {
+            return true;
+        }
+        $bin = @inet_pton($clean);
+        if ($bin !== false && $bin === @inet_pton('fd00:ec2::254')) {
+            return true;
+        }
+        return false;
+    }
+
+    /**
+     * Check if an outbound HTTP proxy is configured in Moodle.
+     *
+     * @return bool True if $CFG->proxyhost is set.
+     */
+    public static function has_outbound_proxy(): bool {
+        global $CFG;
+        return !empty($CFG->proxyhost);
+    }
+
+    /**
      * Check if a destination host or IP is explicitly authorized via internal allowlist.
      *
      * @param string $host Target hostname or IP.
@@ -147,44 +347,111 @@ class url_validator {
             return true;
         }
 
-        // Explicit check for loopback and link-local.
+        // Multicast addresses (224.0.0.0/4 and ff00::/8).
+        if (self::is_multicast_ip($ip)) {
+            return true;
+        }
+
+        // Explicit check for loopback and unspecified addresses.
         if (str_starts_with($ip, '127.') || $ip === '::1' || $ip === '0.0.0.0' || $ip === '255.255.255.255') {
             return true;
         }
 
-        // Link-local and Cloud metadata endpoint (169.254.0.0/16, fe80::/10).
-        if (str_starts_with($ip, '169.254.')) {
+        // Link-local and Cloud metadata endpoints (169.254.0.0/16, fe80::/10, fd00:ec2::254).
+        if (str_starts_with($ip, '169.254.') || self::is_cloud_metadata_ip($ip)) {
             return true;
         }
 
-        // Carrier-grade NAT (100.64.0.0/10: 100.64.0.0 to 100.127.255.255).
+        // IPv4-specific checks.
         $long = ip2long($ip);
         if ($long !== false) {
-            $cgstart = ip2long('100.64.0.0');
-            $cgend = ip2long('100.127.255.255');
-            if ($long >= $cgstart && $long <= $cgend) {
+            // Carrier-grade NAT (100.64.0.0/10: 100.64.0.0 to 100.127.255.255).
+            if ($long >= ip2long('100.64.0.0') && $long <= ip2long('100.127.255.255')) {
                 return true;
             }
+
+            // Benchmarking range RFC 2544.
+            if ($long >= ip2long('198.18.0.0') && $long <= ip2long('198.19.255.255')) {
+                return true;
+            }
+
+            // IETF Protocol Assignments (192.0.0.0/24: 192.0.0.0 to 192.0.0.255).
+            if ($long >= ip2long('192.0.0.0') && $long <= ip2long('192.0.0.255')) {
+                return true;
+            }
+
+            // Documentation ranges (TEST-NET-1, TEST-NET-2, TEST-NET-3).
+            if ($long >= ip2long('192.0.2.0') && $long <= ip2long('192.0.2.255')) {
+                return true;
+            }
+            if ($long >= ip2long('198.51.100.0') && $long <= ip2long('198.51.100.255')) {
+                return true;
+            }
+            if ($long >= ip2long('203.0.113.0') && $long <= ip2long('203.0.113.255')) {
+                return true;
+            }
+
+            return false;
         }
 
-        // IPv6 unique local (fc00::/7) or link-local (fe80::/10).
-        $lowered = strtolower($ip);
-        if (
-            str_starts_with($lowered, 'fe8')
-            || str_starts_with($lowered, 'fe9')
-            || str_starts_with($lowered, 'fea')
-            || str_starts_with($lowered, 'feb')
-            || str_starts_with($lowered, 'fc')
-            || str_starts_with($lowered, 'fd')
-        ) {
-            return true;
-        }
+        // IPv6-specific checks.
+        $bin = @inet_pton($ip);
+        if ($bin !== false && strlen($bin) === 16) {
+            $lowered = strtolower($ip);
 
-        // IPv4-mapped IPv6 (::ffff:127.0.0.1, etc.).
-        if (str_starts_with($lowered, '::ffff:')) {
-            $v4 = substr($lowered, 7);
-            if (filter_var($v4, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4)) {
-                return self::is_private_or_reserved_ip($v4);
+            // IPv6 unique local (fc00::/7) or link-local (fe80::/10).
+            if (
+                str_starts_with($lowered, 'fe8')
+                || str_starts_with($lowered, 'fe9')
+                || str_starts_with($lowered, 'fea')
+                || str_starts_with($lowered, 'feb')
+                || str_starts_with($lowered, 'fc')
+                || str_starts_with($lowered, 'fd')
+            ) {
+                return true;
+            }
+
+            // IPv4-mapped IPv6 (::ffff:127.0.0.1, etc.).
+            if (str_starts_with($lowered, '::ffff:')) {
+                $v4 = substr($lowered, 7);
+                if (filter_var($v4, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4)) {
+                    return self::is_private_or_reserved_ip($v4);
+                }
+            }
+
+            // 6to4 (2002::/16): bytes 0..1 are 0x20 0x02; bytes 2..5 contain embedded IPv4.
+            if ($bin[0] === "\x20" && $bin[1] === "\x02") {
+                $embeddedv4 = @inet_ntop(substr($bin, 2, 4));
+                if ($embeddedv4 !== false) {
+                    return self::is_private_or_reserved_ip($embeddedv4);
+                }
+                return true;
+            }
+
+            // Teredo (2001::/32): bytes 0..3 are 0x20 0x01 0x00 0x00; bytes 12..15 are client IPv4 XOR 0xFF.
+            if ($bin[0] === "\x20" && $bin[1] === "\x01" && $bin[2] === "\x00" && $bin[3] === "\x00") {
+                $clientbytes = substr($bin, 12, 4) ^ "\xff\xff\xff\xff";
+                $embeddedv4 = @inet_ntop($clientbytes);
+                if ($embeddedv4 !== false) {
+                    return self::is_private_or_reserved_ip($embeddedv4);
+                }
+                return true;
+            }
+
+            // NAT64 prefix: 64:ff9b::/96 (bytes 0..11 are 00 64 ff 9b 00 00 00 00 00 00 00 00).
+            $nat64prefix = "\x00\x64\xff\x9b\x00\x00\x00\x00\x00\x00\x00\x00";
+            if (substr($bin, 0, 12) === $nat64prefix) {
+                $embeddedv4 = @inet_ntop(substr($bin, 12, 4));
+                if ($embeddedv4 !== false) {
+                    return self::is_private_or_reserved_ip($embeddedv4);
+                }
+                return true;
+            }
+
+            // NAT64 local-use prefix: 64:ff9b:1::/48 (bytes 0..5 are 00 64 ff 9b 00 01).
+            $nat64localprefix = "\x00\x64\xff\x9b\x00\x01";
+            if (substr($bin, 0, 6) === $nat64localprefix) {
+                return true;
             }
         }
 
@@ -433,6 +700,19 @@ class url_validator {
                     'is_internal_allowed' => true,
                 ];
             }
+
+            // CRITICAL (F4): Verify that the resolved IP belongs to an allowlisted CIDR/IP or safe private range.
+            // Metadata IPs (169.254.169.254, fd00:ec2::254) are NEVER allowed via hostname resolution.
+            if (!self::verify_internal_resolved_ip($ip)) {
+                return [
+                    'valid' => false,
+                    'error' => 'error_private_ip_blocked',
+                    'ip' => $ip,
+                    'resolve_entry' => null,
+                    'is_internal_allowed' => true,
+                ];
+            }
+
             $resolveentry = "{$host}:{$port}:{$ip}";
             return [
                 'valid' => true,

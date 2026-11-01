@@ -122,4 +122,95 @@ final class url_validator_test extends \advanced_testcase {
         $this->assertFalse($blockedcheck['valid']);
         $this->assertEquals('error_blocked_url', $blockedcheck['error']);
     }
+
+    /**
+     * Test extended private, reserved, multicast, documentation, NAT64, 6to4, and Teredo ranges (F4).
+     */
+    public function test_extended_private_and_reserved_ranges(): void {
+        // Multicast (224.0.0.0/4 and ff00::/8).
+        $this->assertTrue(url_validator::is_private_or_reserved_ip('224.0.0.1'));
+        $this->assertTrue(url_validator::is_private_or_reserved_ip('239.255.255.250'));
+        $this->assertTrue(url_validator::is_private_or_reserved_ip('ff02::1'));
+
+        // Benchmarking range RFC 2544.
+        $this->assertTrue(url_validator::is_private_or_reserved_ip('198.18.0.1'));
+        $this->assertTrue(url_validator::is_private_or_reserved_ip('198.19.255.254'));
+
+        // IETF Protocol Assignments (192.0.0.0/24).
+        $this->assertTrue(url_validator::is_private_or_reserved_ip('192.0.0.1'));
+
+        // Documentation ranges (TEST-NET-1, TEST-NET-2, TEST-NET-3).
+        $this->assertTrue(url_validator::is_private_or_reserved_ip('192.0.2.1'));
+        $this->assertTrue(url_validator::is_private_or_reserved_ip('198.51.100.1'));
+        $this->assertTrue(url_validator::is_private_or_reserved_ip('203.0.113.1'));
+
+        // NAT64 with embedded private IPv4 (64:ff9b::/96).
+        $this->assertTrue(url_validator::is_private_or_reserved_ip('64:ff9b::192.168.1.1'));
+        $this->assertTrue(url_validator::is_private_or_reserved_ip('64:ff9b::10.0.0.1'));
+        // NAT64 local-use prefix (64:ff9b:1::/48).
+        $this->assertTrue(url_validator::is_private_or_reserved_ip('64:ff9b:1::1'));
+
+        // 6to4 with embedded private IPv4 (2002::/16).
+        $this->assertTrue(url_validator::is_private_or_reserved_ip('2002:c0a8:0101::')); // 192.168.1.1
+        $this->assertTrue(url_validator::is_private_or_reserved_ip('2002:0a00:0001::')); // 10.0.0.1
+
+        // Teredo with embedded private IPv4 (2001::/32).
+        // 192.168.1.1 XOR 0xFF = 63.87.254.254 (0x3f57feea).
+        $this->assertTrue(url_validator::is_private_or_reserved_ip('2001:0000:4136:e378:8000:63bf:3f57:feea'));
+
+        // Public routable IPs must NOT be blocked.
+        $this->assertFalse(url_validator::is_private_or_reserved_ip('8.8.8.8'));
+        $this->assertFalse(url_validator::is_private_or_reserved_ip('1.1.1.1'));
+        $this->assertFalse(url_validator::is_private_or_reserved_ip('2606:4700:4700::1111'));
+    }
+
+    /**
+     * Test that metadata IPs are blocked for internal hostnames even if the hostname is allowlisted.
+     */
+    public function test_internal_hostname_metadata_ip_blocked(): void {
+        set_config('allowedinternalhosts', "*.internal\n*.local", 'local_webhookengine');
+
+        // Hostname is in allowlist, but resolved IP is cloud metadata (169.254.169.254 or fd00:ec2::254).
+        $this->assertFalse(
+            url_validator::verify_internal_resolved_ip('169.254.169.254'),
+            'Metadata IP 169.254.169.254 must be blocked for internal hostnames.'
+        );
+        $this->assertFalse(
+            url_validator::verify_internal_resolved_ip('fd00:ec2::254'),
+            'AWS IMDSv6 fd00:ec2::254 must be blocked for internal hostnames.'
+        );
+
+        // Standard private IP resolved for allowlisted internal host is permitted.
+        $this->assertTrue(
+            url_validator::verify_internal_resolved_ip('192.168.1.100'),
+            'Standard private IP 192.168.1.100 must be permitted for allowlisted internal host.'
+        );
+        $this->assertTrue(
+            url_validator::verify_internal_resolved_ip('10.0.5.20'),
+            'Standard private IP 10.0.5.20 must be permitted for allowlisted internal host.'
+        );
+
+        // When explicitly typed as an exact IP, it is authorized.
+        set_config('allowedinternalhosts', "169.254.169.254\n*.internal", 'local_webhookengine');
+        $this->assertTrue(
+            url_validator::verify_internal_resolved_ip('169.254.169.254'),
+            'Metadata IP explicitly typed as an IP in allowlist is permitted.'
+        );
+    }
+
+    /**
+     * Test outbound proxy detection helper.
+     */
+    public function test_has_outbound_proxy_detection(): void {
+        global $CFG;
+        $originalproxy = $CFG->proxyhost ?? null;
+
+        $CFG->proxyhost = null;
+        $this->assertFalse(url_validator::has_outbound_proxy());
+
+        $CFG->proxyhost = 'proxy.institution.edu';
+        $this->assertTrue(url_validator::has_outbound_proxy());
+
+        $CFG->proxyhost = $originalproxy;
+    }
 }
