@@ -153,6 +153,14 @@
     border-top: 4px solid #f59e0b;
 }
 
+.webhookengine-card-red {
+    border-top: 4px solid #ef4444;
+}
+
+.webhookengine-card-gray {
+    border-top: 4px solid #94a3b8;
+}
+
 .webhookengine-card-title {
     font-size: 0.785rem;
     font-weight: 700;
@@ -192,15 +200,52 @@
     transform: translateX(3px);
 }
 
+/* Sleek Circular Icon Bubble (Never Wraps) */
+.webhookengine-icon-circle {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.95rem;
+    flex-shrink: 0;
+}
+
+.webhookengine-icon-blue {
+    background-color: #eff6ff;
+}
+
+.webhookengine-icon-green {
+    background-color: #f0fdf4;
+}
+
+.webhookengine-icon-purple {
+    background-color: #faf5ff;
+}
+
+.webhookengine-icon-amber {
+    background-color: #fffbeb;
+}
+
+.webhookengine-icon-red {
+    background-color: #fef2f2;
+}
+
+.webhookengine-icon-gray {
+    background-color: #f1f5f9;
+}
+
 /* Micro Badge Pills */
 .webhookengine-pill {
     font-size: 0.7rem;
-    padding: 0.25rem 0.55rem;
+    padding: 0.2rem 0.5rem;
     border-radius: 9999px;
     font-weight: 600;
     display: inline-flex;
     align-items: center;
     line-height: 1;
+    white-space: nowrap;
 }
 
 .webhookengine-pill-blue {
@@ -226,6 +271,11 @@
 .webhookengine-pill-red {
     background-color: #fef2f2;
     color: #b91c1c;
+}
+
+.webhookengine-pill-gray {
+    background-color: #f1f5f9;
+    color: #475569;
 }
 
 .text-purple {

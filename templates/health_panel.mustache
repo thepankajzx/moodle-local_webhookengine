@@ -53,7 +53,7 @@
             <a href="{{queued_url}}" class="webhookengine-card webhookengine-card-blue h-100 d-flex flex-column text-decoration-none">
                 <div class="webhookengine-card-header d-flex justify-content-between align-items-center mb-2">
                     <span class="webhookengine-card-title">{{#str}}card_queued_title, local_webhookengine{{/str}}</span>
-                    <span class="webhookengine-pill webhookengine-pill-blue">📬 {{#str}}card_queued_badge, local_webhookengine{{/str}}</span>
+                    <div class="webhookengine-icon-circle webhookengine-icon-blue">📬</div>
                 </div>
                 <div class="webhookengine-card-metric text-dark mb-1">{{queuedcount_formatted}}</div>
                 <div class="webhookengine-card-desc text-muted mb-3">{{#str}}card_queued_subtitle, local_webhookengine{{/str}}</div>
@@ -65,12 +65,10 @@
 
         <!-- Card 2: Data Loss Prevention -->
         <div class="col-12 col-sm-6 col-xl">
-            <a href="{{drops_url}}" class="webhookengine-card webhookengine-card-green h-100 d-flex flex-column text-decoration-none">
+            <a href="{{drops_url}}" class="webhookengine-card {{#hasdrops}}webhookengine-card-red{{/hasdrops}}{{^hasdrops}}webhookengine-card-green{{/hasdrops}} h-100 d-flex flex-column text-decoration-none">
                 <div class="webhookengine-card-header d-flex justify-content-between align-items-center mb-2">
                     <span class="webhookengine-card-title">{{#str}}card_drops_title, local_webhookengine{{/str}}</span>
-                    <span class="webhookengine-pill {{#hasdrops}}webhookengine-pill-red{{/hasdrops}}{{^hasdrops}}webhookengine-pill-green{{/hasdrops}}">
-                        🛡️ {{#hasdrops}}{{#str}}card_drops_badge_alert, local_webhookengine{{/str}}{{/hasdrops}}{{^hasdrops}}{{#str}}card_drops_badge_zero, local_webhookengine{{/str}}{{/hasdrops}}
-                    </span>
+                    <div class="webhookengine-icon-circle {{#hasdrops}}webhookengine-icon-red{{/hasdrops}}{{^hasdrops}}webhookengine-icon-green{{/hasdrops}}">🛡️</div>
                 </div>
                 <div class="webhookengine-card-metric {{#hasdrops}}text-danger{{/hasdrops}}{{^hasdrops}}text-success{{/hasdrops}} mb-1">
                     {{#hasdrops}}{{totaldrops_formatted}}{{/hasdrops}}{{^hasdrops}}0 Lost{{/hasdrops}}
@@ -84,13 +82,18 @@
 
         <!-- Card 3: 24h Success Rate -->
         <div class="col-12 col-sm-6 col-xl">
-            <a href="{{success_url}}" class="webhookengine-card webhookengine-card-emerald h-100 d-flex flex-column text-decoration-none">
+            <a href="{{success_url}}" class="webhookengine-card {{successrate_card_border}} h-100 d-flex flex-column text-decoration-none">
                 <div class="webhookengine-card-header d-flex justify-content-between align-items-center mb-2">
                     <span class="webhookengine-card-title">{{#str}}card_success_title, local_webhookengine{{/str}}</span>
-                    <span class="webhookengine-pill webhookengine-pill-green">📈 {{#str}}card_success_badge, local_webhookengine{{/str}}</span>
+                    <div class="webhookengine-icon-circle {{successicon_bg}}">{{successicon}}</div>
                 </div>
-                <div class="webhookengine-card-metric text-success mb-1">{{successrate_display}}</div>
-                <div class="webhookengine-card-desc text-muted mb-3">{{#str}}card_success_subtitle, local_webhookengine{{/str}}</div>
+                <div class="d-flex align-items-center gap-2 mb-1">
+                    <div class="webhookengine-card-metric {{successrate_color_class}}">{{successrate_display}}</div>
+                    {{#successrate_badge}}
+                    <span class="webhookengine-pill {{successrate_badge_class}} text-nowrap">{{successrate_badge}}</span>
+                    {{/successrate_badge}}
+                </div>
+                <div class="webhookengine-card-desc text-muted mb-3">{{successrate_subtitle}}</div>
                 <div class="webhookengine-card-footer mt-auto pt-2 border-top text-success small font-weight-bold fw-bold">
                     {{#str}}card_success_action, local_webhookengine{{/str}} &rarr;
                 </div>
@@ -102,7 +105,7 @@
             <a href="{{deliveries_url}}" class="webhookengine-card webhookengine-card-purple h-100 d-flex flex-column text-decoration-none">
                 <div class="webhookengine-card-header d-flex justify-content-between align-items-center mb-2">
                     <span class="webhookengine-card-title">{{#str}}card_latency_title, local_webhookengine{{/str}}</span>
-                    <span class="webhookengine-pill webhookengine-pill-purple">⚡ {{#str}}card_latency_badge, local_webhookengine{{/str}}</span>
+                    <div class="webhookengine-icon-circle webhookengine-icon-purple">⚡</div>
                 </div>
                 <div class="webhookengine-card-metric text-purple mb-1">{{p95_display}}</div>
                 <div class="webhookengine-card-desc text-muted mb-3">{{#str}}card_latency_subtitle, local_webhookengine{{/str}}</div>
@@ -114,12 +117,10 @@
 
         <!-- Card 5: Connection Safety Switches -->
         <div class="col-12 col-sm-6 col-xl">
-            <a href="{{circuits_url}}" class="webhookengine-card webhookengine-card-amber h-100 d-flex flex-column text-decoration-none">
+            <a href="{{circuits_url}}" class="webhookengine-card {{#has_tripped_circuits}}webhookengine-card-amber{{/has_tripped_circuits}}{{^has_tripped_circuits}}webhookengine-card-green{{/has_tripped_circuits}} h-100 d-flex flex-column text-decoration-none">
                 <div class="webhookengine-card-header d-flex justify-content-between align-items-center mb-2">
                     <span class="webhookengine-card-title">{{#str}}card_circuits_title, local_webhookengine{{/str}}</span>
-                    <span class="webhookengine-pill {{#has_tripped_circuits}}webhookengine-pill-amber{{/has_tripped_circuits}}{{^has_tripped_circuits}}webhookengine-pill-green{{/has_tripped_circuits}}">
-                        🔌 {{#has_tripped_circuits}}{{#str}}card_circuits_badge_tripped, local_webhookengine{{/str}}{{/has_tripped_circuits}}{{^has_tripped_circuits}}{{#str}}card_circuits_badge_healthy, local_webhookengine{{/str}}{{/has_tripped_circuits}}
-                    </span>
+                    <div class="webhookengine-icon-circle {{#has_tripped_circuits}}webhookengine-icon-amber{{/has_tripped_circuits}}{{^has_tripped_circuits}}webhookengine-icon-green{{/has_tripped_circuits}}">🔌</div>
                 </div>
                 <div class="webhookengine-card-metric webhookengine-card-metric-sm {{#has_tripped_circuits}}text-warning{{/has_tripped_circuits}}{{^has_tripped_circuits}}text-success{{/has_tripped_circuits}} mb-1">
                     {{circuits_status_display}}

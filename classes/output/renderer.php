@@ -72,6 +72,52 @@ class renderer extends plugin_renderer_base {
             $oldestdisplay = get_string('card_oldest_healthy', 'local_webhookengine');
         }
 
+        // Dynamically compute success rate styling and badges.
+        $successrate = $telemetry['successrate_24h'] ?? null;
+        $successsubtitle = get_string('card_success_subtitle', 'local_webhookengine');
+        $successcardborder = 'webhookengine-card-emerald';
+        $successicon = '📈';
+        $successiconbg = 'webhookengine-icon-green';
+
+        if ($successrate === null) {
+            $successbadge = get_string('card_success_no_data', 'local_webhookengine');
+            $successcolor = 'text-muted';
+            $successbadgeclass = 'webhookengine-pill-gray';
+            $successcardborder = 'webhookengine-card-gray';
+            $successicon = '📊';
+            $successiconbg = 'webhookengine-icon-gray';
+        } else if ($successrate >= 98.0) {
+            $successbadge = get_string('card_success_optimal', 'local_webhookengine');
+            $successcolor = 'text-success';
+            $successbadgeclass = 'webhookengine-pill-green';
+            $successcardborder = 'webhookengine-card-emerald';
+            $successicon = '📈';
+            $successiconbg = 'webhookengine-icon-green';
+        } else if ($successrate >= 90.0) {
+            $successbadge = get_string('card_success_good', 'local_webhookengine');
+            $successcolor = 'text-primary';
+            $successbadgeclass = 'webhookengine-pill-blue';
+            $successcardborder = 'webhookengine-card-blue';
+            $successicon = '📈';
+            $successiconbg = 'webhookengine-icon-blue';
+        } else if ($successrate >= 75.0) {
+            $successbadge = get_string('card_success_degraded', 'local_webhookengine');
+            $successcolor = 'text-warning';
+            $successbadgeclass = 'webhookengine-pill-amber';
+            $successcardborder = 'webhookengine-card-amber';
+            $successicon = '⚠️';
+            $successiconbg = 'webhookengine-icon-amber';
+        } else {
+            // High error rate (e.g. 9.5%).
+            $successbadge = get_string('card_success_critical', 'local_webhookengine');
+            $successcolor = 'text-danger';
+            $successbadgeclass = 'webhookengine-pill-red';
+            $successcardborder = 'webhookengine-card-red';
+            $successsubtitle = get_string('card_success_critical_subtitle', 'local_webhookengine');
+            $successicon = '⚠️';
+            $successiconbg = 'webhookengine-icon-red';
+        }
+
         $context = array_merge([
             'queuedcount' => $queuedcount,
             'queuedcount_formatted' => number_format($queuedcount),
@@ -97,6 +143,13 @@ class renderer extends plugin_renderer_base {
             'is_warning' => ($herostatus === 'warning'),
             'is_danger' => ($herostatus === 'danger'),
             'successrate_display' => $telemetry['successrate_display'] ?? '-',
+            'successrate_badge' => $successbadge,
+            'successrate_badge_class' => $successbadgeclass,
+            'successrate_color_class' => $successcolor,
+            'successrate_card_border' => $successcardborder,
+            'successrate_subtitle' => $successsubtitle,
+            'successicon' => $successicon,
+            'successicon_bg' => $successiconbg,
             'p95_display' => $telemetry['p95_display'] ?? '-',
             'circuits_status_display' => $telemetry['circuits_status_display'] ?? '-',
             'has_tripped_circuits' => $hascircuittrip,
