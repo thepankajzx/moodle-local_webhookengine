@@ -59,7 +59,7 @@ jobs:
           echo "$(cd ci && pwd)/bin" >> $GITHUB_PATH
 
       - name: Install Moodle and Plugin
-        run: moodle-plugin-ci install --plugin local_webhookengine --moodle-branch ${{ matrix.moodle-branch }} --db-type ${{ matrix.database }}
+        run: moodle-plugin-ci install --plugin local_webhookengine --branch ${{ matrix.moodle-branch }} --db-type ${{ matrix.database }}
 
       - name: Code Checker (PHPCS)
         run: moodle-plugin-ci codechecker
