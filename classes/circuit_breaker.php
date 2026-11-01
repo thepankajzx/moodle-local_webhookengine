@@ -111,10 +111,17 @@ class circuit_breaker {
         $currentstate = self::get_state($hook);
 
         $tripped = false;
-        if ($currentstate === self::STATE_HALF_OPEN || $newstreak >= $tripthreshold) {
+        if ($currentstate === self::STATE_HALF_OPEN) {
             $currentstate = self::STATE_OPEN;
             $cooldownuntil = $now + $cooldownduration;
             $tripped = true;
+        } else if ($newstreak >= $tripthreshold) {
+            // Only flag tripped if the hook was not already in open state.
+            if ($hook->circuitstate !== self::STATE_OPEN) {
+                $tripped = true;
+            }
+            $currentstate = self::STATE_OPEN;
+            $cooldownuntil = $now + $cooldownduration;
         } else {
             $cooldownuntil = 0;
         }
@@ -253,16 +260,28 @@ class circuit_breaker {
      * @param int $cooldown Cooldown period in seconds.
      */
     public static function trigger_circuit_alert(object $hook, int $failstreak, int $cooldown): void {
-        $cooldownmin = (int) ceil($cooldown / 60);
-        $subject = get_string('circuit_breaker_alert_subject', 'local_webhookengine', $hook->name);
-        $message = get_string('circuit_breaker_alert_body', 'local_webhookengine', (object) [
-            'name' => $hook->name,
-            'url' => $hook->url,
-            'streak' => $failstreak,
-            'cooldown' => $cooldownmin,
-        ]);
+        try {
+            $cache = \cache::make('local_webhookengine', 'ratelimit');
+            $cooldownkey = 'alert_cb_' . $hook->id;
+            if ($cache->get($cooldownkey) !== false) {
+                return;
+            }
+            // Cooldown for 15 minutes to prevent alert notification storms.
+            $cache->set($cooldownkey, 1);
 
-        alert_dispatcher::dispatch('circuit_breaker_alert', $subject, $message);
+            $cooldownmin = (int) ceil($cooldown / 60);
+            $subject = get_string('circuit_breaker_alert_subject', 'local_webhookengine', $hook->name);
+            $message = get_string('circuit_breaker_alert_body', 'local_webhookengine', (object) [
+                'name' => $hook->name,
+                'url' => $hook->url,
+                'streak' => $failstreak,
+                'cooldown' => $cooldownmin,
+            ]);
+
+            alert_dispatcher::dispatch('circuit_breaker_alert', $subject, $message);
+        } catch (\Throwable $e) {
+            debugging('local_webhookengine: failed to dispatch circuit alert: ' . $e->getMessage(), DEBUG_DEVELOPER);
+        }
     }
 
     /**
