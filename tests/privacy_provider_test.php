@@ -83,7 +83,7 @@ final class privacy_provider_test extends \advanced_testcase {
 
         // Context should now include system context.
         $contextlist = \local_webhookengine\privacy\provider::get_contexts_for_userid($user->id);
-        $this->assertContains($systemcontext->id, $contextlist->get_contextids());
+        $this->assertContainsEquals($systemcontext->id, $contextlist->get_contextids());
 
         // Test delete_data_for_user.
         $appcontextlist = new \core_privacy\local\request\approved_contextlist(
