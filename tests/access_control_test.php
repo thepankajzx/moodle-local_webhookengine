@@ -90,34 +90,38 @@ final class access_control_test extends \advanced_testcase {
     }
 
     /**
-     * Test single-use secret reveal token cache lifecycle.
+     * Test single-use secret reveal token encryption, lifecycle, and replay protection (F5).
      */
     public function test_secret_reveal_cache_token_single_use(): void {
-        $token = bin2hex(random_bytes(16));
+        $hookid = 99;
+        $userid = 2;
+        $whsec = 'whsec_testtoken1234567890abcdef123456';
+
+        // Create token via helper.
+        $token = hook_repository::create_secret_reveal_token($hookid, $whsec, $userid);
+        $this->assertNotEmpty($token);
+
+        // Inspect raw cache: verify secret is NOT stored in plaintext!
         $cache = \cache::make('local_webhookengine', 'ratelimit');
-        $cachekey = 'secret_reveal_' . $token;
+        $rawcached = $cache->get('secret_reveal_' . $token);
+        $this->assertIsArray($rawcached);
+        $this->assertNotEquals($whsec, $rawcached['secret'], 'Secret in MUC cache must be encrypted, not plaintext.');
+        $this->assertStringStartsWith('sodium:', $rawcached['secret'], 'Secret must be encrypted with core encryption.');
 
-        $secretdata = [
-            'hookid' => 99,
-            'secret' => 'whsec_testtoken1234567890abcdef',
-            'userid' => 2,
-        ];
+        // Consumption by wrong user must return null.
+        $wronguser = hook_repository::consume_secret_reveal_token($token, $hookid, 9999);
+        $this->assertNull($wronguser);
 
-        // Store token.
-        $cache->set($cachekey, $secretdata);
+        // First legitimate consumption succeeds and returns original secret.
+        $revealed = hook_repository::consume_secret_reveal_token($token, $hookid, $userid);
+        $this->assertEquals($whsec, $revealed);
 
-        // First read succeeds.
-        $retrieved = $cache->get($cachekey);
-        $this->assertIsArray($retrieved);
-        $this->assertEquals(99, $retrieved['hookid']);
-        $this->assertEquals('whsec_testtoken1234567890abcdef', $retrieved['secret']);
-        $this->assertEquals(2, $retrieved['userid']);
+        // Replay of the same token must return null (single-use destruction).
+        $replayed = hook_repository::consume_secret_reveal_token($token, $hookid, $userid);
+        $this->assertNull($replayed, 'Replay of consumed secret reveal token must return null.');
 
-        // Invalidate on first consumption.
-        $cache->delete($cachekey);
-
-        // Second read returns false (destroyed).
-        $this->assertFalse($cache->get($cachekey));
+        // Raw cache must be empty.
+        $this->assertFalse($cache->get('secret_reveal_' . $token));
     }
 
     /**

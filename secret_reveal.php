@@ -52,30 +52,15 @@ $heading = $isrotated
 $PAGE->set_title($heading);
 $PAGE->set_heading($heading);
 
-// Retrieve and IMMEDIATELY destroy one-time token from cache.
-$cache = \cache::make('local_webhookengine', 'ratelimit');
-$cachekey = 'secret_reveal_' . $token;
-$secretdata = $cache->get($cachekey);
-
-if ($secretdata !== false) {
-    // Single-use destruction: token cannot be reused or reloaded.
-    $cache->delete($cachekey);
-}
-
-// Verify token authenticity and user match.
-$isvalid = ($secretdata !== false
-    && is_array($secretdata)
-    && (int) ($secretdata['hookid'] ?? 0) === $id
-    && (int) ($secretdata['userid'] ?? 0) === (int) $USER->id
-    && !empty($secretdata['secret']));
+// Consume and immediately destroy single-use reveal token from cache with core decryption and 60s TTL.
+$rawsecret = \local_webhookengine\hook_repository::consume_secret_reveal_token($token, $id, (int) $USER->id);
+$isvalid = ($rawsecret !== null);
 
 echo $OUTPUT->header();
 
 $manageurl = new moodle_url('/local/webhookengine/manage.php');
 
 if ($isvalid) {
-    $rawsecret = (string) $secretdata['secret'];
-
     $copybtn = html_writer::tag('button', get_string('copy_secret', 'local_webhookengine'), [
         'type' => 'button',
         'class' => 'btn btn-primary ms-2',

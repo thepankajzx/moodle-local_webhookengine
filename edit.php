@@ -121,13 +121,7 @@ if ($mform->is_cancelled()) {
         $newid = hook_repository::create_hook($record, $rawsecret);
         $whsec = hook_repository::format_whsec($rawsecret);
 
-        $token = bin2hex(random_bytes(16));
-        $cache = \cache::make('local_webhookengine', 'ratelimit');
-        $cache->set('secret_reveal_' . $token, [
-            'hookid' => $newid,
-            'secret' => $whsec,
-            'userid' => $USER->id,
-        ]);
+        $token = hook_repository::create_secret_reveal_token($newid, $whsec, (int) $USER->id);
 
         redirect(
             new moodle_url('/local/webhookengine/secret_reveal.php', ['id' => $newid, 'token' => $token]),

@@ -83,6 +83,77 @@ class hook_repository {
     }
 
     /**
+     * Create an encrypted, single-use, 60-second time-to-live reveal token bound to a specific user and hook.
+     *
+     * @param int $hookid Hook ID.
+     * @param string $whsec Formatted secret string (whsec_...).
+     * @param int $userid User ID authorized to view the secret.
+     * @return string Cryptographically secure random token string.
+     */
+    public static function create_secret_reveal_token(int $hookid, string $whsec, int $userid): string {
+        $token = bin2hex(random_bytes(16));
+        $cache = \cache::make('local_webhookengine', 'ratelimit');
+        $encryptedsecret = \core\encryption::encrypt($whsec);
+        $cache->set('secret_reveal_' . $token, [
+            'hookid' => $hookid,
+            'secret' => $encryptedsecret,
+            'userid' => $userid,
+            'time' => time(),
+        ]);
+        return $token;
+    }
+
+    /**
+     * Consume and immediately destroy a one-time secret reveal token.
+     *
+     * Decrypts the secret with core encryption, enforces 60-second TTL, and verifies user/hook bindings.
+     * Replaying this method with the same token always returns null.
+     *
+     * @param string $token Reveal token.
+     * @param int $hookid Hook ID.
+     * @param int $userid Current user ID.
+     * @return string|null Decrypted secret string, or null if token is invalid, expired, or already consumed.
+     */
+    public static function consume_secret_reveal_token(string $token, int $hookid, int $userid): ?string {
+        if ($token === '' || $hookid <= 0 || $userid <= 0) {
+            return null;
+        }
+
+        $cache = \cache::make('local_webhookengine', 'ratelimit');
+        $cachekey = 'secret_reveal_' . $token;
+        $secretdata = $cache->get($cachekey);
+
+        if ($secretdata === false || !is_array($secretdata)) {
+            return null;
+        }
+
+        // Single-use destruction on first read.
+        $cache->delete($cachekey);
+
+        // Enforce 60-second time-to-live.
+        $createdtime = (int) ($secretdata['time'] ?? 0);
+        if ($createdtime <= 0 || (time() - $createdtime) > 60) {
+            return null;
+        }
+
+        // Verify hook and user ID bindings.
+        if ((int) ($secretdata['hookid'] ?? 0) !== $hookid || (int) ($secretdata['userid'] ?? 0) !== $userid) {
+            return null;
+        }
+
+        if (empty($secretdata['secret'])) {
+            return null;
+        }
+
+        try {
+            return \core\encryption::decrypt((string) $secretdata['secret']);
+        } catch (\Throwable $e) {
+            debugging('local_webhookengine: failed to decrypt reveal secret: ' . $e->getMessage(), DEBUG_DEVELOPER);
+            return null;
+        }
+    }
+
+    /**
      * Encrypt custom headers array.
      *
      * @param array $headers Associative array of headers.

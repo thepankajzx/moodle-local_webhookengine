@@ -89,13 +89,7 @@ switch ($action) {
             ]);
             $event->trigger();
 
-            $token = bin2hex(random_bytes(16));
-            $cache = \cache::make('local_webhookengine', 'ratelimit');
-            $cache->set('secret_reveal_' . $token, [
-                'hookid' => $id,
-                'secret' => $whsec,
-                'userid' => $USER->id,
-            ]);
+            $token = hook_repository::create_secret_reveal_token($id, $whsec, (int) $USER->id);
 
             redirect(new moodle_url('/local/webhookengine/secret_reveal.php', [
                 'id' => $id,
