@@ -56,6 +56,7 @@ function local_webhookengine_pluginfile($course, $cm, $context, $filearea, $args
         return false;
     }
 
-    send_stored_file($file, 0, 0, $forcedownload, $options);
+    // Archives must unconditionally be downloaded as attachments to prevent browser MIME sniffing.
+    send_stored_file($file, 0, 0, true, $options);
     return true;
 }

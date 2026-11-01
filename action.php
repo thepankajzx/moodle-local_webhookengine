@@ -42,6 +42,7 @@ $hookid = optional_param('hookid', 0, PARAM_INT);
 use local_webhookengine\delivery_service;
 use local_webhookengine\hook_repository;
 use local_webhookengine\http_client;
+use local_webhookengine\oauth2_client;
 use local_webhookengine\signer;
 use local_webhookengine\url_validator;
 use local_webhookengine\event\hook_deleted;
@@ -171,6 +172,27 @@ switch ($action) {
             }
         }
 
+        // OAuth2 Client Credentials flow.
+        if (!empty($hook->authmode) && $hook->authmode === 'oauth2') {
+            try {
+                $accesstoken = oauth2_client::get_access_token($hook);
+                $hasauthheader = false;
+                foreach ($headers as $hdr) {
+                    if (stripos($hdr, 'Authorization:') === 0) {
+                        $hasauthheader = true;
+                        break;
+                    }
+                }
+                if (!$hasauthheader) {
+                    $headers[] = 'Authorization: Bearer ' . $accesstoken;
+                }
+            } catch (\Throwable $e) {
+                $manageurl = new moodle_url('/local/webhookengine/manage.php');
+                $errmsg = get_string('error_oauth2_failed', 'local_webhookengine') . ': ' . $e->getMessage();
+                redirect($manageurl, $errmsg, null, \core\output\notification::NOTIFY_ERROR);
+            }
+        }
+
         if (!url_validator::validate_for_delivery($hook->url)) {
             $manageurl = new moodle_url('/local/webhookengine/manage.php');
             redirect(
@@ -182,7 +204,8 @@ switch ($action) {
         }
 
         $client = new http_client();
-        $res = $client->send($hook->url, $testpayload, $headers, min(10, $hook->timeout ?: 10));
+        $usemtls = !empty($hook->usemtls);
+        $res = $client->send($hook->url, $testpayload, $headers, min(10, $hook->timeout ?: 10), $usemtls);
 
         $event = test_sent::create([
             'context' => $context,

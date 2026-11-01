@@ -14,6 +14,9 @@ All notable changes to the `local_webhookengine` plugin will be documented in th
 - Database schema migration savepoint `2026110104` adding `usemtls`, `authmode`, `oauth2tokenurl`, `oauth2clientid`, `oauth2clientsecret`, and `oauth2scope` to `{local_webhookengine_hook}`.
 - Integrated OAuth2 Bearer token injection and mTLS execution into background delivery pipelines (`classes/delivery_service.php`).
 - Extended CLI administration tool (`cli/webhook_ctl.php`) to export and import mTLS and OAuth2 configuration metadata with automatic secret redaction.
+- Enforced unconditional `$forcedownload = true` on `local_webhookengine_pluginfile()` in `lib.php` ensuring log archive downloads are strictly handled as attachments.
+- Added negative authorization verification test suite (`tests/pluginfile_test.php`) verifying context level checks, filearea isolation, and capability requirements.
+- Aligned `action.php` manual test pings (`send_test`) with OAuth2 client credentials token injection and mTLS certificate handling, establishing complete parity with background cron delivery workers.
 - Published comprehensive institutional STRIDE Threat Model whitepaper (`STRIDE_THREAT_MODEL.md`) providing architectural proof of security controls across Spoofing, Tampering, Repudiation, Information Disclosure, Denial of Service, and Elevation of Privilege for enterprise procurement reviews.
 - Added comprehensive GDPR Privacy API verification suite (`tests/privacy_provider_test.php`) verifying metadata compliance, user context resolution, and operational data anonymization.
 
