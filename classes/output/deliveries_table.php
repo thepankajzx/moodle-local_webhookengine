@@ -68,8 +68,22 @@ class deliveries_table extends table_sql {
 
         $this->define_baseurl($baseurl);
 
-        $columns = ['id', 'uuid', 'eventname', 'status', 'attempts', 'httpstatus', 'duration', 'timecreated'];
-        $headers = [
+        $columns = [];
+        $headers = [];
+
+        if (!$this->is_downloading() && $this->canreplay) {
+            $columns[] = 'select';
+            $headers[] = html_writer::empty_tag('input', [
+                'type' => 'checkbox',
+                'id' => 'select_all_deliveries',
+                'title' => get_string('select_all', 'local_webhookengine'),
+                'style' => 'width: 1.15rem; height: 1.15rem; cursor: pointer; margin: 0;',
+            ]);
+        }
+
+        $basecols = ['id', 'uuid', 'eventname', 'status', 'attempts', 'httpstatus', 'duration', 'timecreated'];
+        $columns = array_merge($columns, $basecols);
+        $headers = array_merge($headers, [
             get_string('id', 'local_webhookengine'),
             get_string('uuid', 'local_webhookengine'),
             get_string('event_name', 'local_webhookengine'),
@@ -78,7 +92,7 @@ class deliveries_table extends table_sql {
             get_string('http_status', 'local_webhookengine'),
             get_string('duration_ms', 'local_webhookengine'),
             get_string('time_created', 'local_webhookengine'),
-        ];
+        ]);
 
         // Include personal data and payloads only when authorized and requested during export.
         if ($this->is_downloading() && $this->includepersonal) {
@@ -102,6 +116,7 @@ class deliveries_table extends table_sql {
         $this->sortable(true, 'timecreated', SORT_DESC);
         if (!$this->is_downloading()) {
             $this->no_sorting('actions');
+            $this->no_sorting('select');
         }
 
         // Enable standard export support if user has the export capability.
@@ -135,6 +150,26 @@ class deliveries_table extends table_sql {
         }
 
         $this->set_sql($fields, $from, implode(' AND ', $where), $params);
+    }
+
+    /**
+     * Format select checkbox column for bulk replay actions.
+     *
+     * @param object $row Data row.
+     * @return string Checkbox HTML or dash.
+     */
+    public function col_select(object $row): string {
+        if (in_array($row->status, ['failed', 'dropped', 'retrying']) && !empty($row->payload)) {
+            return html_writer::empty_tag('input', [
+                'type' => 'checkbox',
+                'name' => 'deliveryids[]',
+                'value' => (int) $row->id,
+                'form' => 'bulk_replay_form',
+                'class' => 'delivery-select-cb',
+                'style' => 'width: 1.15rem; height: 1.15rem; cursor: pointer; margin: 0;',
+            ]);
+        }
+        return html_writer::tag('span', '-', ['class' => 'text-muted small']);
     }
 
     /**

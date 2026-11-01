@@ -285,6 +285,54 @@ switch ($action) {
         );
         break;
 
+    case 'replay_selected':
+        require_capability('local/webhookengine:replay', $context);
+        $deliveryids = optional_param_array('deliveryids', [], PARAM_INT);
+        $returnurl = optional_param('returnurl', '', PARAM_LOCALURL);
+        $redirecturl = !empty($returnurl)
+            ? new moodle_url($returnurl)
+            : new moodle_url('/local/webhookengine/deliveries.php');
+
+        if (empty($deliveryids)) {
+            redirect(
+                $redirecturl,
+                get_string('no_deliveries_selected', 'local_webhookengine'),
+                null,
+                \core\output\notification::NOTIFY_WARNING
+            );
+        }
+
+        [$insql, $inparams] = $DB->get_in_or_equal($deliveryids, SQL_PARAMS_NAMED);
+        $select = "id $insql AND status IN ('failed', 'dropped', 'retrying') AND payload IS NOT NULL";
+        $records = $DB->get_records_select('local_webhookengine_delivery', $select, $inparams);
+
+        $replayedcount = 0;
+        foreach ($records as $rec) {
+            $rec->status = 'queued';
+            $rec->attempts = 0; // Reset attempts counter for clean cycle.
+            $rec->nextattempt = time();
+            $DB->update_record('local_webhookengine_delivery', $rec);
+
+            $task = new \local_webhookengine\task\send_delivery();
+            $task->set_custom_data((object) ['deliveryid' => (int) $rec->id]);
+            \core\task\manager::queue_adhoc_task($task, true);
+
+            $event = delivery_replayed::create([
+                'context' => $context,
+                'objectid' => $rec->id,
+            ]);
+            $event->trigger();
+            $replayedcount++;
+        }
+
+        redirect(
+            $redirecturl,
+            get_string('replayed_count_notice', 'local_webhookengine', $replayedcount),
+            null,
+            \core\output\notification::NOTIFY_SUCCESS
+        );
+        break;
+
     default:
         throw new \moodle_exception('error_invalid_action', 'local_webhookengine');
 }

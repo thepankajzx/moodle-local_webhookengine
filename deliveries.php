@@ -257,10 +257,97 @@ if (!$table->is_downloading()) {
 
         echo $exportcard;
     }
+
+    // Render bulk replay action bar if user has replay capability.
+    if (has_capability('local/webhookengine:replay', $context)) {
+        $actionurl = new moodle_url('/local/webhookengine/action.php');
+        $bulkform = html_writer::empty_tag('input', ['type' => 'hidden', 'name' => 'action', 'value' => 'replay_selected'])
+            . html_writer::empty_tag('input', ['type' => 'hidden', 'name' => 'sesskey', 'value' => sesskey()])
+            . html_writer::empty_tag('input', ['type' => 'hidden', 'name' => 'returnurl', 'value' => $pageurl->out(false)]);
+
+        $counterbadge = html_writer::span('0', 'badge badge-secondary bg-secondary text-white ms-1 ml-1', [
+            'id' => 'selected_counter_badge',
+        ]);
+        $counterlabel = html_writer::div(
+            html_writer::tag('span', get_string('selected', 'local_webhookengine') . ':', [
+                'class' => 'text-muted small fw-bold font-weight-bold',
+            ]) . ' ' . $counterbadge,
+            'd-flex align-items-center'
+        );
+
+        $confirmmsg = json_encode(get_string('confirm_replay_selected', 'local_webhookengine'));
+        $bulkbtn = html_writer::tag('button', '🔁 ' . get_string('replay_selected', 'local_webhookengine'), [
+            'type' => 'submit',
+            'id' => 'bulk_replay_submit',
+            'class' => 'btn btn-outline-warning btn-sm fw-bold font-weight-bold',
+            'disabled' => 'disabled',
+            'onclick' => 'return confirm(' . $confirmmsg . ');',
+        ]);
+
+        $bulkbarcontent = html_writer::div(
+            $counterlabel . $bulkbtn,
+            'd-flex align-items-center justify-content-between w-100'
+        );
+        $bulkformcontainer = html_writer::tag('form', $bulkform . $bulkbarcontent, [
+            'method' => 'post',
+            'action' => $actionurl->out(false),
+            'id' => 'bulk_replay_form',
+            'class' => 'p-2 mb-3 bg-white border rounded shadow-sm',
+        ]);
+        echo $bulkformcontainer;
+    }
 }
 
 $table->out(50, true);
 
 if (!$table->is_downloading()) {
+    // Interactive checkbox select-all and selection counter logic.
+    $jscode = "
+document.addEventListener('DOMContentLoaded', function() {
+    var selectAll = document.getElementById('select_all_deliveries');
+    var checkboxes = document.querySelectorAll('.delivery-select-cb');
+    var btn = document.getElementById('bulk_replay_submit');
+    var counter = document.getElementById('selected_counter_badge');
+
+    function updateState() {
+        var checked = document.querySelectorAll('.delivery-select-cb:checked');
+        var count = checked.length;
+        if (btn) {
+            btn.disabled = (count === 0);
+            if (count > 0) {
+                btn.className = 'btn btn-warning btn-sm fw-bold font-weight-bold text-dark';
+            } else {
+                btn.className = 'btn btn-outline-warning btn-sm fw-bold font-weight-bold';
+            }
+        }
+        if (counter) {
+            counter.textContent = count;
+            if (count > 0) {
+                counter.className = 'badge badge-primary bg-primary text-white ms-1 ml-1';
+            } else {
+                counter.className = 'badge badge-secondary bg-secondary text-white ms-1 ml-1';
+            }
+        }
+        if (selectAll && checkboxes.length > 0) {
+            selectAll.checked = (count === checkboxes.length);
+            selectAll.indeterminate = (count > 0 && count < checkboxes.length);
+        }
+    }
+
+    if (selectAll) {
+        selectAll.addEventListener('change', function() {
+            checkboxes.forEach(function(cb) {
+                cb.checked = selectAll.checked;
+            });
+            updateState();
+        });
+    }
+
+    checkboxes.forEach(function(cb) {
+        cb.addEventListener('change', updateState);
+    });
+});";
+    echo html_writer::tag('script', $jscode);
+
     echo $OUTPUT->footer();
 }
