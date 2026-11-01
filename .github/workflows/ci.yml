@@ -10,36 +10,39 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - {moodle-branch: 'MOODLE_405_STABLE', php: '8.1', database: 'pgsql'}
-          - {moodle-branch: 'MOODLE_405_STABLE', php: '8.2', database: 'mariadb'}
-          - {moodle-branch: 'MOODLE_405_STABLE', php: '8.3', database: 'mysqli'}
-          - {moodle-branch: 'MOODLE_500_STABLE', php: '8.2', database: 'pgsql'}
-          - {moodle-branch: 'MOODLE_500_STABLE', php: '8.3', database: 'mariadb'}
-          - {moodle-branch: 'MOODLE_501_STABLE', php: '8.2', database: 'mariadb'}
-          - {moodle-branch: 'MOODLE_501_STABLE', php: '8.3', database: 'mysqli'}
-          - {moodle-branch: 'MOODLE_502_STABLE', php: '8.3', database: 'pgsql'}
-          - {moodle-branch: 'MOODLE_502_STABLE', php: '8.3', database: 'mariadb'}
-          - {moodle-branch: 'MOODLE_502_STABLE', php: '8.3', database: 'mysqli'}
+          - {moodle-branch: 'MOODLE_405_STABLE', php: '8.1', database: 'pgsql', db-user: 'postgres'}
+          - {moodle-branch: 'MOODLE_405_STABLE', php: '8.2', database: 'mariadb', db-user: 'root'}
+          - {moodle-branch: 'MOODLE_405_STABLE', php: '8.3', database: 'mysqli', db-user: 'root'}
+          - {moodle-branch: 'MOODLE_500_STABLE', php: '8.2', database: 'pgsql', db-user: 'postgres'}
+          - {moodle-branch: 'MOODLE_500_STABLE', php: '8.3', database: 'mariadb', db-user: 'root'}
+          - {moodle-branch: 'MOODLE_501_STABLE', php: '8.2', database: 'mariadb', db-user: 'root'}
+          - {moodle-branch: 'MOODLE_501_STABLE', php: '8.3', database: 'mysqli', db-user: 'root'}
+          - {moodle-branch: 'MOODLE_502_STABLE', php: '8.3', database: 'pgsql', db-user: 'postgres'}
+          - {moodle-branch: 'MOODLE_502_STABLE', php: '8.3', database: 'mariadb', db-user: 'root'}
+          - {moodle-branch: 'MOODLE_502_STABLE', php: '8.3', database: 'mysqli', db-user: 'root'}
 
     services:
       mariadb:
-        image: mariadb:10.11
+        image: mariadb:11.4
         env:
           MYSQL_ALLOW_EMPTY_PASSWORD: 'yes'
         ports:
           - 3306:3306
-        options: --health-cmd="mariadb-admin ping || mysqladmin ping" --health-interval=10s --health-timeout=5s --health-retries=3
+        options: --health-cmd="mariadb-admin ping || mysqladmin ping" --health-interval=10s --health-timeout=5s --health-retries=5
 
       pgsql:
-        image: postgres:15
+        image: postgres:16
         env:
           POSTGRES_USER: postgres
           POSTGRES_HOST_AUTH_METHOD: 'trust'
         ports:
           - 5432:5432
-        options: --health-cmd="pg_isready" --health-interval=10s --health-timeout=5s --health-retries=3
+        options: --health-cmd="pg_isready" --health-interval=10s --health-timeout=5s --health-retries=5
 
     steps:
+      - name: Generate Locale
+        run: sudo locale-gen en_AU.UTF-8
+
       - name: Check out plugin repository
         uses: actions/checkout@v4
         with:
@@ -59,7 +62,7 @@ jobs:
           echo "$(cd ci && pwd)/bin" >> $GITHUB_PATH
 
       - name: Install Moodle and Plugin
-        run: moodle-plugin-ci install --plugin local_webhookengine --branch ${{ matrix.moodle-branch }} --db-type ${{ matrix.database }}
+        run: moodle-plugin-ci install --plugin local_webhookengine --branch ${{ matrix.moodle-branch }} --db-type ${{ matrix.database }} --db-host 127.0.0.1 --db-user ${{ matrix.db-user }}
 
       - name: Code Checker (PHPCS)
         run: moodle-plugin-ci codechecker
