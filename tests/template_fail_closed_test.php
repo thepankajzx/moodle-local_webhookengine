@@ -122,7 +122,7 @@ final class template_fail_closed_test extends \advanced_testcase {
         ]);
 
         $mockclient = $this->createMock(\local_webhookengine\http_client::class);
-        $mockclient->expects($this->never())->method('post');
+        $mockclient->expects($this->never())->method('send');
 
         $service = new delivery_service();
         $result = $service->execute_delivery($deliveryid, $mockclient);

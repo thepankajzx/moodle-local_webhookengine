@@ -92,10 +92,7 @@ class provider implements
         $hashooks = $DB->record_exists('local_webhookengine_hook', ['createdby' => $userid]);
 
         if ($hasdeliveries || $hashooks) {
-            $contextlist->add_from_sql(
-                "SELECT id AS contextid FROM {context} WHERE id = :contextid",
-                ['contextid' => $systemcontext->id]
-            );
+            $contextlist->add_system_context();
         }
 
         return $contextlist;
