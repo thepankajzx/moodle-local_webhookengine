@@ -9,9 +9,17 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        php: ['8.1', '8.2', '8.3']
-        moodle-branch: ['MOODLE_405_STABLE']
-        database: ['mariadb', 'pgsql']
+        include:
+          - {moodle-branch: 'MOODLE_405_STABLE', php: '8.1', database: 'pgsql'}
+          - {moodle-branch: 'MOODLE_405_STABLE', php: '8.2', database: 'mariadb'}
+          - {moodle-branch: 'MOODLE_405_STABLE', php: '8.3', database: 'mysqli'}
+          - {moodle-branch: 'MOODLE_500_STABLE', php: '8.2', database: 'pgsql'}
+          - {moodle-branch: 'MOODLE_500_STABLE', php: '8.3', database: 'mariadb'}
+          - {moodle-branch: 'MOODLE_501_STABLE', php: '8.2', database: 'mariadb'}
+          - {moodle-branch: 'MOODLE_501_STABLE', php: '8.3', database: 'mysqli'}
+          - {moodle-branch: 'MOODLE_502_STABLE', php: '8.3', database: 'pgsql'}
+          - {moodle-branch: 'MOODLE_502_STABLE', php: '8.3', database: 'mariadb'}
+          - {moodle-branch: 'MOODLE_502_STABLE', php: '8.3', database: 'mysqli'}
 
     services:
       mariadb:
@@ -20,11 +28,12 @@ jobs:
           MYSQL_ALLOW_EMPTY_PASSWORD: 'yes'
         ports:
           - 3306:3306
-        options: --health-cmd="mysqladmin ping" --health-interval=10s --health-timeout=5s --health-retries=3
+        options: --health-cmd="mariadb-admin ping || mysqladmin ping" --health-interval=10s --health-timeout=5s --health-retries=3
 
       pgsql:
         image: postgres:15
         env:
+          POSTGRES_USER: postgres
           POSTGRES_HOST_AUTH_METHOD: 'trust'
         ports:
           - 5432:5432
@@ -41,12 +50,13 @@ jobs:
         with:
           php-version: ${{ matrix.php }}
           extensions: mbstring, intl, xml, sodium, mysqli, pgsql, zip, gd
+          ini-values: max_input_vars=5000
           coverage: none
 
       - name: Initialise moodle-plugin-ci
         run: |
-          composer create-project --no-dev --prefer-dist moodlehq/moodle-plugin-ci ci ^4
-          echo $(cd ci && pwd)/bin >> $GITHUB_PATH
+          composer create-project -n --no-dev --prefer-dist moodlehq/moodle-plugin-ci ci ^4
+          echo "$(cd ci && pwd)/bin" >> $GITHUB_PATH
 
       - name: Install Moodle and Plugin
         run: moodle-plugin-ci install --plugin local_webhookengine --moodle-branch ${{ matrix.moodle-branch }} --db-type ${{ matrix.database }}
