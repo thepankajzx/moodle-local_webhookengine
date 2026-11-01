@@ -61,21 +61,11 @@ class observer {
                 return;
             }
 
-            // 3. Global kill switch check evaluated after map match to record drops.
-            if ((bool) get_config('local_webhookengine', 'killswitch')) {
-                foreach ($hookentries as $entry) {
-                    $entryid = is_array($entry) ? (int) $entry['id'] : (int) $entry;
-                    if ($entryid > 0) {
-                        hook_repository::record_drop($entryid, reasons::KILL_SWITCH);
-                    }
-                }
-                return;
-            }
-
             $courseid = $event->courseid ? (int) $event->courseid : null;
             $userid = $event->userid ? (int) $event->userid : null;
+            $iskillswitch = (bool) get_config('local_webhookengine', 'killswitch');
 
-            // 4. Process each matching hook.
+            // 3. Process each matching hook.
             foreach ($hookentries as $entry) {
                 if (is_array($entry)) {
                     $hookid = (int) $entry['id'];
@@ -89,18 +79,28 @@ class observer {
                     continue;
                 }
 
-                if ($hookstatus === 'paused') {
+                $hook = hook_repository::get_hook($hookid);
+                if (!$hook || empty($hook->enabled)) {
+                    continue;
+                }
+
+                // CRITICAL (F3): Evaluate filter rules BEFORE recording paused or killswitch drops!
+                // An event outside a hook's scope is not relevant and must never be recorded as a drop.
+                if (!filter_matcher::matches($hook->filters, $courseid, $userid)) {
+                    continue;
+                }
+
+                if ($iskillswitch) {
+                    hook_repository::record_drop($hookid, reasons::KILL_SWITCH);
+                    continue;
+                }
+
+                if ($hookstatus === 'paused' || $hook->status === 'paused') {
                     hook_repository::record_drop($hookid, reasons::HOOK_PAUSED);
                     continue;
                 }
 
-                $hook = hook_repository::get_hook($hookid);
-                if (!$hook || empty($hook->enabled) || $hook->status !== 'active') {
-                    continue;
-                }
-
-                // Apply scope & filter rules.
-                if (!filter_matcher::matches($hook->filters, $courseid, $userid)) {
+                if ($hook->status !== 'active') {
                     continue;
                 }
 
@@ -175,6 +175,7 @@ class observer {
                 ];
 
                 $deliveryid = (int) $DB->insert_record('local_webhookengine_delivery', $delivery);
+                rate_limiter::adjust_global_queue(1);
 
                 // Queue background adhoc task (custom data contains strictly delivery ID only).
                 $task = new \local_webhookengine\task\send_delivery();

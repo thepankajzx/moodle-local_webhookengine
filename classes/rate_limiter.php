@@ -19,6 +19,14 @@ namespace local_webhookengine;
 /**
  * High-performance rate limiting and queue overload guard backed by Moodle application cache.
  *
+ * Rate limits are evaluated across rolling 60-second windows. In clustered multi-node environments,
+ * the rate limit is enforced approximate per-node when local cache stores (APCu, File) are used;
+ * configuring a shared cache store (Redis, Memcached) for local_webhookengine/ratelimit enforces
+ * cluster-wide atomic limits.
+ *
+ * Global queue and per-hook backlog counters are dynamically maintained and reconciled with a 15-second
+ * TTL, ensuring storm guards never operate on frozen 120-second stale counts.
+ *
  * @package    local_webhookengine
  * @copyright  2026 Definite Labs <support@thedefinite.one>
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
@@ -27,7 +35,8 @@ class rate_limiter {
     /**
      * Check if a hook has exceeded its per-minute delivery limit and increment counter.
      *
-     * Fails open if cache backend encounters an exception.
+     * Fails open if cache backend encounters an exception. Rate cap is evaluated approximate
+     * per-node on non-shared caches and cluster-wide on Redis/Memcached cache backends.
      *
      * @param int $hookid Hook ID.
      * @param int|null $ratecap Optional per-minute limit.
@@ -84,19 +93,20 @@ class rate_limiter {
 
         try {
             $cache = \cache::make('local_webhookengine', 'ratelimit');
-            $key = 'backlog_' . $hookid;
-            $count = $cache->get($key);
+            $key = 'backlog_data_' . $hookid;
+            $data = $cache->get($key);
 
-            if ($count === false) {
+            if ($data === false || !is_array($data) || (time() - (int) ($data['time'] ?? 0)) > 15) {
                 global $DB;
-                $count = $DB->count_records('local_webhookengine_delivery', [
+                $count = (int) $DB->count_records('local_webhookengine_delivery', [
                     'hookid' => $hookid,
                     'status' => 'retrying',
                 ]);
-                $cache->set($key, $count);
+                $data = ['count' => $count, 'time' => time()];
+                $cache->set($key, $data);
             }
 
-            return ((int) $count) >= $limit;
+            return ((int) $data['count']) >= $limit;
         } catch (\Throwable $e) {
             // Fail open: DB or cache hiccup must not discard valid events.
             debugging('local_webhookengine: backlog check error: ' . $e->getMessage(), DEBUG_DEVELOPER);
@@ -105,9 +115,34 @@ class rate_limiter {
     }
 
     /**
+     * Adjust cached hook backlog count dynamically in response to state transitions.
+     *
+     * @param int $hookid Hook ID.
+     * @param int $delta Number to add (positive) or subtract (negative).
+     */
+    public static function adjust_hook_backlog(int $hookid, int $delta): void {
+        if ($hookid <= 0 || $delta === 0) {
+            return;
+        }
+        try {
+            $cache = \cache::make('local_webhookengine', 'ratelimit');
+            $key = 'backlog_data_' . $hookid;
+            $data = $cache->get($key);
+            if ($data === false || !is_array($data)) {
+                $data = ['count' => max(0, $delta), 'time' => time()];
+            } else {
+                $data['count'] = max(0, (int) $data['count'] + $delta);
+            }
+            $cache->set($key, $data);
+        } catch (\Throwable $e) {
+            unset($e);
+        }
+    }
+
+    /**
      * Check if the global pending queue size has exceeded maximum capacity.
      *
-     * Accurately aggregates both queued and retrying rows to avoid stale counts.
+     * Dynamic counter cached with 15s TTL and adjusted in-process on enqueue/completion.
      *
      * @param int|null $maxqueue Optional global queue limit.
      * @return bool True if safe to enqueue, false if queue overloaded.
@@ -119,23 +154,46 @@ class rate_limiter {
 
         try {
             $cache = \cache::make('local_webhookengine', 'ratelimit');
-            $cachedcount = $cache->get('global_queue_count');
+            $data = $cache->get('global_queue_data');
 
-            if ($cachedcount === false) {
+            if ($data === false || !is_array($data) || (time() - (int) ($data['time'] ?? 0)) > 15) {
                 global $DB;
-                $count = $DB->count_records_select(
+                $count = (int) $DB->count_records_select(
                     'local_webhookengine_delivery',
                     "status IN ('queued', 'retrying')"
                 );
-                $cache->set('global_queue_count', $count);
-                return $count < $maxqueue;
+                $data = ['count' => $count, 'time' => time()];
+                $cache->set('global_queue_data', $data);
             }
 
-            return ((int) $cachedcount) < $maxqueue;
+            return ((int) $data['count']) < $maxqueue;
         } catch (\Throwable $e) {
             // Fail open.
             debugging('local_webhookengine: queue guard error: ' . $e->getMessage(), DEBUG_DEVELOPER);
             return true;
+        }
+    }
+
+    /**
+     * Adjust cached global queue count dynamically upon enqueue or terminal delivery.
+     *
+     * @param int $delta Number to add (positive) or subtract (negative).
+     */
+    public static function adjust_global_queue(int $delta): void {
+        if ($delta === 0) {
+            return;
+        }
+        try {
+            $cache = \cache::make('local_webhookengine', 'ratelimit');
+            $data = $cache->get('global_queue_data');
+            if ($data === false || !is_array($data)) {
+                $data = ['count' => max(0, $delta), 'time' => time()];
+            } else {
+                $data['count'] = max(0, (int) $data['count'] + $delta);
+            }
+            $cache->set('global_queue_data', $data);
+        } catch (\Throwable $e) {
+            unset($e);
         }
     }
 

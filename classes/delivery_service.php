@@ -283,6 +283,11 @@ class delivery_service {
                 $delivery->nextattempt = null;
                 $DB->update_record('local_webhookengine_delivery', $delivery);
 
+                rate_limiter::adjust_global_queue(-1);
+                if ($delivery->attempts > 1) {
+                    rate_limiter::adjust_hook_backlog((int) $hook->id, -1);
+                }
+
                 $this->record_hook_success($hook);
                 return true;
             }
@@ -293,6 +298,12 @@ class delivery_service {
                 $delivery->errorcode = 'redirect_not_followed';
                 $delivery->nextattempt = null;
                 $DB->update_record('local_webhookengine_delivery', $delivery);
+
+                rate_limiter::adjust_global_queue(-1);
+                if ($delivery->attempts > 1) {
+                    rate_limiter::adjust_hook_backlog((int) $hook->id, -1);
+                }
+
                 $this->record_hook_failure($hook);
                 return false;
             }
@@ -313,6 +324,10 @@ class delivery_service {
                 $delivery->nextattempt = time() + $delay;
                 $DB->update_record('local_webhookengine_delivery', $delivery);
 
+                if ($delivery->attempts === 1) {
+                    rate_limiter::adjust_hook_backlog((int) $hook->id, 1);
+                }
+
                 // Queue ad-hoc task for next run.
                 $task = new \local_webhookengine\task\send_delivery();
                 $task->set_custom_data((object) ['deliveryid' => (int) $delivery->id]);
@@ -325,6 +340,11 @@ class delivery_service {
 
             // Terminal failure.
             $delivery->status = 'failed';
+            rate_limiter::adjust_global_queue(-1);
+            if ($delivery->attempts > 1) {
+                rate_limiter::adjust_hook_backlog((int) $hook->id, -1);
+            }
+
             $ispermanent4xx = ($status >= 400 && $status < 500 && !$isretryable);
             if ($ispermanent4xx) {
                 $delivery->errorcode = 'http_' . $status;

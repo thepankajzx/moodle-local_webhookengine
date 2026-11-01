@@ -71,6 +71,9 @@ class check_health extends \core\task\scheduled_task {
 
         // Sweep overdue orphaned deliveries whose ad-hoc tasks failed or vanished.
         $this->sweep_orphaned_deliveries();
+
+        // Flush any buffered drop ledger counts to database.
+        hook_repository::flush_drop_buffer();
     }
 
     /**

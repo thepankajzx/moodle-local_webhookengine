@@ -46,5 +46,6 @@ class send_delivery extends \core\task\adhoc_task {
 
         $service = new delivery_service();
         $service->execute_delivery((int) $data->deliveryid);
+        \local_webhookengine\hook_repository::flush_drop_buffer();
     }
 }

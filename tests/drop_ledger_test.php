@@ -139,4 +139,83 @@ final class drop_ledger_test extends \advanced_testcase {
         // Now backlog must be exceeded.
         $this->assertTrue(rate_limiter::is_hook_backlog_exceeded($hookid, 5));
     }
+
+    /**
+     * Test that record_drop buffers counts in-memory without immediate database writes.
+     */
+    public function test_record_drop_buffers_in_process(): void {
+        global $DB;
+
+        $rawsecret = hook_repository::generate_raw_secret();
+        $data = (object) [
+            'name' => 'Buffer Test Hook',
+            'url' => 'https://example.com/webhook',
+            'enabled' => 1,
+            'events' => ['\core\event\user_loggedin'],
+            'filters' => [],
+            'payloadopts' => [],
+            'timeout' => 5,
+            'maxattempts' => 3,
+        ];
+        $hookid = hook_repository::create_hook($data, $rawsecret);
+
+        $DB->delete_records('local_webhookengine_drop_ledger', ['hookid' => $hookid]);
+
+        // Record 15 drops.
+        for ($i = 0; $i < 15; $i++) {
+            hook_repository::record_drop($hookid, reasons::RATE_LIMITED, 1);
+        }
+
+        // Before manual flush or read, verify in-memory buffer holds drops.
+        $totalbeforeflush = $DB->count_records('local_webhookengine_drop_ledger', ['hookid' => $hookid]);
+        $this->assertEquals(0, $totalbeforeflush, 'Drops must be buffered in-memory with zero immediate DB writes.');
+
+        // Flush buffer.
+        hook_repository::flush_drop_buffer();
+
+        $totalafterflush = hook_repository::get_hook_drop_count_by_reason($hookid, reasons::RATE_LIMITED);
+        $this->assertEquals(15, $totalafterflush, 'Flushed buffer must yield single aggregated count of 15.');
+    }
+
+    /**
+     * Test that rate limiter per-minute window enforces capacity limits.
+     */
+    public function test_rate_limiter_window_and_node_semantics(): void {
+        $rawsecret = hook_repository::generate_raw_secret();
+        $data = (object) [
+            'name' => 'Rate Limit Window Hook',
+            'url' => 'https://example.com/webhook',
+            'enabled' => 1,
+            'events' => ['\core\event\user_loggedin'],
+            'filters' => [],
+            'payloadopts' => [],
+            'timeout' => 5,
+            'maxattempts' => 3,
+        ];
+        $hookid = hook_repository::create_hook($data, $rawsecret);
+
+        // Allow 3 requests per minute.
+        $this->assertTrue(rate_limiter::check_and_increment_hook($hookid, 3));
+        $this->assertTrue(rate_limiter::check_and_increment_hook($hookid, 3));
+        $this->assertTrue(rate_limiter::check_and_increment_hook($hookid, 3));
+
+        // 4th request must be rejected.
+        $this->assertFalse(rate_limiter::check_and_increment_hook($hookid, 3));
+    }
+
+    /**
+     * Test dynamic global queue count adjustments.
+     */
+    public function test_dynamic_queue_and_backlog_counters(): void {
+        rate_limiter::adjust_global_queue(7);
+        $cache = \cache::make('local_webhookengine', 'ratelimit');
+        $data = $cache->get('global_queue_data');
+
+        $this->assertNotEmpty($data);
+        $this->assertGreaterThanOrEqual(7, (int) $data['count']);
+
+        rate_limiter::adjust_global_queue(-3);
+        $dataafter = $cache->get('global_queue_data');
+        $this->assertEquals((int) $data['count'] - 3, (int) $dataafter['count']);
+    }
 }

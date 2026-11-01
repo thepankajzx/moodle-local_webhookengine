@@ -33,6 +33,12 @@ class hook_repository {
     /** @var string Hook deleted status. */
     public const STATUS_DELETED = 'deleted';
 
+    /** @var array In-process buffer for dropped events: ["hookid:reason:minutetime" => count]. */
+    private static array $dropbuffer = [];
+
+    /** @var bool Whether shutdown flush function has been registered. */
+    private static bool $shutdownregistered = false;
+
     /**
      * Generate 32 cryptographically secure random bytes for signing secret.
      *
@@ -488,56 +494,94 @@ class hook_repository {
     /**
      * Record dropped events in the aggregated drop ledger.
      *
-     * Uses atomic slot-based sharding (slots 0-7) to prevent DB row lock contention.
+     * Buffers drop counts in-memory to eliminate database writes on the hot event path.
+     * Drops are aggregated and flushed to the database on process shutdown or batch threshold.
      *
      * @param int $hookid Hook database ID.
      * @param string $reason Reason code from local_webhookengine\reasons.
      * @param int $count Number of events dropped.
      */
     public static function record_drop(int $hookid, string $reason, int $count = 1): void {
-        global $DB;
-
         if ($hookid <= 0 || $count <= 0) {
             return;
         }
 
-        $now = time();
-        $minutetime = (int) floor($now / 60) * 60;
-        $slot = random_int(0, 7);
+        $minutetime = (int) floor(time() / 60) * 60;
+        $key = $hookid . ':' . $reason . ':' . $minutetime;
 
-        try {
-            $record = (object) [
-                'hookid' => $hookid,
-                'reason' => $reason,
-                'minutetime' => $minutetime,
-                'slot' => $slot,
-                'dropcount' => $count,
-                'timemodified' => $now,
-            ];
-            $DB->insert_record('local_webhookengine_drop_ledger', $record);
-        } catch (\dml_exception $e) {
-            // Row already exists for (hookid, reason, minutetime, slot), atomically increment.
+        self::$dropbuffer[$key] = (self::$dropbuffer[$key] ?? 0) + $count;
+
+        if (!self::$shutdownregistered) {
+            self::$shutdownregistered = true;
+            register_shutdown_function([self::class, 'flush_drop_buffer']);
+        }
+
+        // Flush immediately if buffer exceeds 50 distinct bucket keys.
+        if (count(self::$dropbuffer) >= 50) {
+            self::flush_drop_buffer();
+        }
+    }
+
+    /**
+     * Flush in-process drop counts to the persistent drop ledger database table.
+     *
+     * Uses atomic slot-based sharding (slots 0-7) to prevent DB row lock contention.
+     */
+    public static function flush_drop_buffer(): void {
+        global $DB;
+
+        if (empty(self::$dropbuffer)) {
+            return;
+        }
+
+        $pending = self::$dropbuffer;
+        self::$dropbuffer = [];
+        $now = time();
+
+        foreach ($pending as $key => $dropcount) {
+            $parts = explode(':', $key);
+            if (count($parts) !== 3) {
+                continue;
+            }
+            $hookid = (int) $parts[0];
+            $reason = (string) $parts[1];
+            $minutetime = (int) $parts[2];
+            $slot = random_int(0, 7);
+
             try {
-                $sql = "UPDATE {local_webhookengine_drop_ledger}
-                           SET dropcount = dropcount + :inc,
-                               timemodified = :now
-                         WHERE hookid = :hookid
-                           AND reason = :reason
-                           AND minutetime = :minutetime
-                           AND slot = :slot";
-                $DB->execute($sql, [
-                    'inc' => $count,
-                    'now' => $now,
+                $record = (object) [
                     'hookid' => $hookid,
                     'reason' => $reason,
                     'minutetime' => $minutetime,
                     'slot' => $slot,
-                ]);
-            } catch (\Throwable $ex) {
-                debugging('local_webhookengine: failed to update drop ledger: ' . $ex->getMessage(), DEBUG_DEVELOPER);
+                    'dropcount' => $dropcount,
+                    'timemodified' => $now,
+                ];
+                $DB->insert_record('local_webhookengine_drop_ledger', $record);
+            } catch (\dml_exception $e) {
+                // Row already exists for (hookid, reason, minutetime, slot), atomically increment.
+                try {
+                    $sql = "UPDATE {local_webhookengine_drop_ledger}
+                               SET dropcount = dropcount + :inc,
+                                   timemodified = :now
+                             WHERE hookid = :hookid
+                               AND reason = :reason
+                               AND minutetime = :minutetime
+                               AND slot = :slot";
+                    $DB->execute($sql, [
+                        'inc' => $dropcount,
+                        'now' => $now,
+                        'hookid' => $hookid,
+                        'reason' => $reason,
+                        'minutetime' => $minutetime,
+                        'slot' => $slot,
+                    ]);
+                } catch (\Throwable $ex) {
+                    debugging('local_webhookengine: failed to update drop ledger: ' . $ex->getMessage(), DEBUG_DEVELOPER);
+                }
+            } catch (\Throwable $e) {
+                debugging('local_webhookengine: failed to flush drop ledger: ' . $e->getMessage(), DEBUG_DEVELOPER);
             }
-        } catch (\Throwable $e) {
-            debugging('local_webhookengine: failed to record drop ledger: ' . $e->getMessage(), DEBUG_DEVELOPER);
         }
     }
 
@@ -550,6 +594,8 @@ class hook_repository {
      */
     public static function get_hook_drop_summary(int $hookid, int $since = 0): array {
         global $DB;
+
+        self::flush_drop_buffer();
 
         $sql = "SELECT reason, SUM(dropcount) AS total
                   FROM {local_webhookengine_drop_ledger}
@@ -573,6 +619,8 @@ class hook_repository {
     public static function get_hook_total_drops(int $hookid, int $since = 0): int {
         global $DB;
 
+        self::flush_drop_buffer();
+
         $sql = "SELECT SUM(dropcount) AS total
                   FROM {local_webhookengine_drop_ledger}
                  WHERE hookid = :hookid AND minutetime >= :since";
@@ -591,6 +639,8 @@ class hook_repository {
     public static function get_hook_drop_count_by_reason(int $hookid, string $reason, int $since = 0): int {
         global $DB;
 
+        self::flush_drop_buffer();
+
         $sql = "SELECT SUM(dropcount) AS total
                   FROM {local_webhookengine_drop_ledger}
                  WHERE hookid = :hookid AND reason = :reason AND minutetime >= :since";
@@ -605,6 +655,8 @@ class hook_repository {
      */
     public static function get_all_hooks_total_drops(): array {
         global $DB;
+
+        self::flush_drop_buffer();
 
         $sql = "SELECT hookid, SUM(dropcount) AS total
                   FROM {local_webhookengine_drop_ledger}
