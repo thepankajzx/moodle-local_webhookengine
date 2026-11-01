@@ -100,7 +100,7 @@ class rate_limiter {
                 global $DB;
                 $count = (int) $DB->count_records('local_webhookengine_delivery', [
                     'hookid' => $hookid,
-                    'status' => 'retrying',
+                    'status' => delivery_service::STATUS_RETRYING,
                 ]);
                 $data = ['count' => $count, 'time' => time()];
                 $cache->set($key, $data);
@@ -158,9 +158,11 @@ class rate_limiter {
 
             if ($data === false || !is_array($data) || (time() - (int) ($data['time'] ?? 0)) > 15) {
                 global $DB;
+                $statusqueued = delivery_service::STATUS_QUEUED;
+                $statusretrying = delivery_service::STATUS_RETRYING;
                 $count = (int) $DB->count_records_select(
                     'local_webhookengine_delivery',
-                    "status IN ('queued', 'retrying')"
+                    "status IN ('$statusqueued', '$statusretrying')"
                 );
                 $data = ['count' => $count, 'time' => time()];
                 $cache->set('global_queue_data', $data);

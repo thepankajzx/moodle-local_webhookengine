@@ -10,13 +10,13 @@ We actively provide security patches, vulnerability mitigations, and compliance 
 
 | Version | Supported | Moodle Compatibility | Status |
 |:---:|:---:|:---:|:---|
-| **1.1.0** | :white_check_mark: | 4.5 LTS – 5.2 | **Active / Current Stable Release** (Enterprise Hardened) |
+| **1.1.0** | :white_check_mark: | 4.5 LTS – 5.2 | **Active / Current Stable Release** (Hardened) |
 | **1.0.3** | :white_check_mark: | 4.5 LTS – 5.2 | Maintained (Security patches) |
 | 1.0.2 | :x: | 4.5 – 5.2 | End of Life (Upgrade to 1.1.0 immediately) |
 | 1.0.1 | :x: | 4.5 – 5.2 | End of Life |
 | 1.0.0 | :x: | 4.5 – 5.2 | End of Life |
 
-If you are running any version prior to **v1.0.3**, please upgrade immediately to benefit from critical security fixes (including SSRF network policy isolation, template fail-closed protection, and cryptographic replay guards).
+If you are running any version prior to **v1.0.3**, please upgrade immediately to benefit from critical security fixes (including SSRF network policy isolation, template fail-closed protection, and single-use secret reveal tokens).
 
 ---
 
@@ -43,10 +43,10 @@ To help us triage and resolve the issue quickly, please provide:
 
 We adhere to the following SLA commitments for all verified security reports:
 
-- **Initial Acknowledgement:** Within **48 hours** of report receipt.
-- **Triage & Severity Assessment:** Within **3 business days**.
-- **Critical / High Severity Patch:** Released within **7 business days** (or sooner for zero-day active exploits).
-- **Public Disclosure:** Coordinated release and CVE assignment after institutional users and customers have been provided with patched release packages.
+- **Initial Acknowledgement:** Within **3 business days** of report receipt.
+- **Triage & Severity Assessment:** Within **5 business days**.
+- **Fix Delivery:** As soon as possible, with a target of **14 days** for critical severity issues.
+- **Public Disclosure:** Coordinated release and advisory publication after users have been provided with patched release packages.
 
 ---
 

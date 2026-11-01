@@ -27,17 +27,23 @@ class delivery_service {
     /** @var array Base retry backoff schedule in seconds: 1m, 5m, 15m, 1h, 3h, 6h, 12h, 24h. */
     public const RETRY_SCHEDULE = [60, 300, 900, 3600, 10800, 21600, 43200, 86400];
 
-    /** @var string Delivery pending status. */
-    public const STATUS_PENDING = 'pending';
+    /** @var string Delivery queued status in database. */
+    public const STATUS_QUEUED = 'queued';
 
-    /** @var string Delivery retrying status. */
+    /** @var string Legacy alias for backward compatibility. */
+    public const STATUS_PENDING = 'queued';
+
+    /** @var string Delivery retrying status in database. */
     public const STATUS_RETRYING = 'retrying';
 
-    /** @var string Delivery success status. */
+    /** @var string Delivery success status in database. */
     public const STATUS_SUCCESS = 'success';
 
-    /** @var string Delivery failed status. */
+    /** @var string Delivery failed status in database. */
     public const STATUS_FAILED = 'failed';
+
+    /** @var string Delivery dropped status in database. */
+    public const STATUS_DROPPED = 'dropped';
 
     /**
      * Execute a delivery attempt.
@@ -59,13 +65,13 @@ class delivery_service {
         }
 
         // Terminal states should not be re-executed by standard cron.
-        if (in_array($delivery->status, ['success', 'dropped'])) {
+        if (in_array($delivery->status, [self::STATUS_SUCCESS, self::STATUS_DROPPED])) {
             return false;
         }
 
         $killswitch = (bool) get_config('local_webhookengine', 'killswitch');
         if ($killswitch) {
-            $delivery->status = 'dropped';
+            $delivery->status = self::STATUS_DROPPED;
             $delivery->errorcode = reasons::KILL_SWITCH;
             $delivery->timelastattempt = time();
             $DB->update_record('local_webhookengine_delivery', $delivery);
@@ -75,7 +81,7 @@ class delivery_service {
 
         $hook = hook_repository::get_hook($delivery->hookid);
         if (!$hook || !$hook->enabled || $hook->status !== 'active') {
-            $delivery->status = 'dropped';
+            $delivery->status = self::STATUS_DROPPED;
             $delivery->errorcode = reasons::HOOK_DISABLED_OR_MISSING;
             $delivery->timelastattempt = time();
             $DB->update_record('local_webhookengine_delivery', $delivery);
@@ -135,7 +141,7 @@ class delivery_service {
         try {
             // Validate target URL before outbound network attempt.
             if (!url_validator::validate_for_delivery($hook->url)) {
-                $delivery->status = 'failed';
+                $delivery->status = self::STATUS_FAILED;
                 $delivery->errorcode = 'blocked_or_invalid_url';
                 $delivery->timelastattempt = time();
                 $DB->update_record('local_webhookengine_delivery', $delivery);
@@ -254,7 +260,7 @@ class delivery_service {
                         $headers[] = 'Authorization: Bearer ' . $accesstoken;
                     }
                 } catch (\Throwable $e) {
-                    $delivery->status = 'failed';
+                    $delivery->status = self::STATUS_FAILED;
                     $delivery->errorcode = 'oauth2_token_failed';
                     $delivery->timelastattempt = time();
                     $delivery->attempts++;
@@ -277,7 +283,7 @@ class delivery_service {
 
             if ($status >= 200 && $status < 300) {
                 // Success.
-                $delivery->status = 'success';
+                $delivery->status = self::STATUS_SUCCESS;
                 $delivery->errorcode = null;
                 $delivery->payload = null; // Clean up payload upon confirmed delivery.
                 $delivery->nextattempt = null;
@@ -294,7 +300,7 @@ class delivery_service {
 
             // Failure handling.
             if ($status >= 300 && $status < 400) {
-                $delivery->status = 'failed';
+                $delivery->status = self::STATUS_FAILED;
                 $delivery->errorcode = 'redirect_not_followed';
                 $delivery->nextattempt = null;
                 $DB->update_record('local_webhookengine_delivery', $delivery);
@@ -319,7 +325,7 @@ class delivery_service {
             if ($isretryable && $delivery->attempts < $hook->maxattempts) {
                 // Schedule retry.
                 $delay = $this->calculate_retry_delay($delivery->attempts, $response->retryafter);
-                $delivery->status = 'retrying';
+                $delivery->status = self::STATUS_RETRYING;
                 $delivery->errorcode = $response->errno > 0 ? 'network_error_' . $response->errno : 'http_' . $status;
                 $delivery->nextattempt = time() + $delay;
                 $DB->update_record('local_webhookengine_delivery', $delivery);
@@ -339,7 +345,7 @@ class delivery_service {
             }
 
             // Terminal failure.
-            $delivery->status = 'failed';
+            $delivery->status = self::STATUS_FAILED;
             rate_limiter::adjust_global_queue(-1);
             if ($delivery->attempts > 1) {
                 rate_limiter::adjust_hook_backlog((int) $hook->id, -1);

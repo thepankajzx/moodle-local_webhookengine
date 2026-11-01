@@ -160,7 +160,7 @@ class observer {
                     'hookid' => (int) $hook->id,
                     'uuid' => $uuid,
                     'eventname' => $eventname,
-                    'status' => 'queued',
+                    'status' => delivery_service::STATUS_QUEUED,
                     'attempts' => 0,
                     'nextattempt' => $nextattempt,
                     'httpstatus' => null,

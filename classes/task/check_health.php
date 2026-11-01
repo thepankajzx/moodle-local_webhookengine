@@ -96,9 +96,11 @@ class check_health extends \core\task\scheduled_task {
 
         while ($requeued < $limit) {
             $fetchlimit = min($batchsize, $limit - $requeued);
+            $statusqueued = \local_webhookengine\delivery_service::STATUS_QUEUED;
+            $statusretrying = \local_webhookengine\delivery_service::STATUS_RETRYING;
             $sql = "SELECT id
                       FROM {local_webhookengine_delivery}
-                     WHERE status IN ('queued', 'retrying')
+                     WHERE status IN ('$statusqueued', '$statusretrying')
                        AND nextattempt < :overduetime
                   ORDER BY nextattempt ASC, id ASC";
             $orphans = $DB->get_records_sql($sql, ['overduetime' => $overduetime], 0, $fetchlimit);

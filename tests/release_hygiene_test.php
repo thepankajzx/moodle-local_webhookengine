@@ -64,10 +64,12 @@ final class release_hygiene_test extends \advanced_testcase {
      * Test delivery service status constants.
      */
     public function test_delivery_status_constants(): void {
-        $this->assertSame('pending', delivery_service::STATUS_PENDING);
+        $this->assertSame('queued', delivery_service::STATUS_QUEUED);
+        $this->assertSame('queued', delivery_service::STATUS_PENDING);
         $this->assertSame('retrying', delivery_service::STATUS_RETRYING);
         $this->assertSame('success', delivery_service::STATUS_SUCCESS);
         $this->assertSame('failed', delivery_service::STATUS_FAILED);
+        $this->assertSame('dropped', delivery_service::STATUS_DROPPED);
     }
 
     /**
@@ -88,12 +90,17 @@ final class release_hygiene_test extends \advanced_testcase {
         $doccontent = file_get_contents($docpath);
         $securitycontent = file_get_contents($securitypath);
 
-        // Ensure no unverified "Enterprise Certified" claim exists.
+        // Ensure no unverified claims or unsupported marketing terms exist.
         $this->assertStringNotContainsString('Enterprise Certified', $doccontent);
+        $this->assertStringNotContainsString('enterprise-grade', $readmecontent);
+        $this->assertStringNotContainsString('Enterprise Reliability', $readmecontent);
+        $this->assertStringNotContainsString('cryptographic replay guards', $securitycontent);
 
-        // Ensure SECURITY.md defines supported versions table and contact.
+        // Ensure SECURITY.md defines supported versions table, contact, and realistic SLAs.
         $this->assertStringContainsString('1.0.3', $securitycontent);
         $this->assertStringContainsString('support@thedefinite.one', $securitycontent);
+        $this->assertStringContainsString('3 business days', $securitycontent);
+        $this->assertStringContainsString('14 days', $securitycontent);
 
         // Ensure README declares product as Event Webhooks Engine.
         $this->assertStringContainsString('# Event Webhooks Engine', $readmecontent);

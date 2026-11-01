@@ -1,6 +1,6 @@
 # Event Webhooks Engine (`local_webhookengine`)
 
-Event Webhooks Engine is a high-performance, enterprise-grade generic webhook dispatcher for Moodle 4.5 to 5.2. It captures any Moodle event (Quiz completions, Course completions, User enrolments, Assignment submissions, Badges, Forum discussions, and more) and reliably delivers cryptographically signed JSON payloads to any HTTPS destination, including n8n, Zapier, Make, custom APIs, and CRMs.
+Event Webhooks Engine is a generic, asynchronous webhook dispatcher for Moodle 4.5 and 5.0+. It captures Moodle events (Quiz completions, Course completions, User enrolments, Assignment submissions, Badges, Forum discussions, and more) and reliably delivers cryptographically signed JSON payloads to any HTTPS destination, including n8n, Zapier, Make, custom APIs, and CRMs.
 
 ---
 
@@ -11,7 +11,7 @@ Event Webhooks Engine is a high-performance, enterprise-grade generic webhook di
 - **Standard Webhooks Compatible:** Complies with the [Standard Webhooks specification](https://www.standardwebhooks.com/) (`webhook-id`, `webhook-timestamp`, `webhook-signature` with HMAC-SHA256).
 - **Flexible Scope & Filters:** Filter events by Course IDs, Course Category hierarchy (with subcategory support), or exclude automated/guest activity.
 - **Payload Customization:** Opt in to include user details, email addresses, course metadata, and raw event `other` data. Optionally supply a custom JSON template with safe parameter replacement.
-- **Enterprise Reliability:** Automatic retries with exponential backoff (1m, 5m, 15m, 1h, 3h, 6h, 12h, 24h) and jitter.
+- **Reliable Retries:** Automatic retries with exponential backoff (1m, 5m, 15m, 1h, 3h, 6h, 12h, 24h) and jitter.
 - **Health Monitoring & Auto-Pause:** Proactively monitors consecutive failures, automatically pauses dead endpoints to conserve cron resources, and notifies administrators via Moodle messages.
 - **Security & Privacy First:** Secrets and custom headers are encrypted at rest using Moodle's encryption subsystem (`\core\encryption`). Full Moodle Privacy API implementation.
 
