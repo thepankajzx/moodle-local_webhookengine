@@ -104,12 +104,6 @@ class observer {
                     continue;
                 }
 
-                // Circuit breaker check: drop incoming events if downstream endpoint circuit is open.
-                if (!circuit_breaker::can_dispatch($hook)) {
-                    hook_repository::record_drop($hook->id, reasons::CIRCUIT_BREAKER_OPEN);
-                    continue;
-                }
-
                 // Backlog check: protect shared queue from noisy neighbor starvation.
                 if (rate_limiter::is_hook_backlog_exceeded($hook->id)) {
                     hook_repository::record_drop($hook->id, reasons::HOOK_BACKLOG_EXCEEDED);
@@ -159,13 +153,16 @@ class observer {
                 }
 
                 $now = time();
+                $iscircuitopen = (circuit_breaker::get_state($hook) === circuit_breaker::STATE_OPEN);
+                $nextattempt = $iscircuitopen ? max($now, (int) $hook->circuitcooldownuntil) : $now;
+
                 $delivery = (object) [
                     'hookid' => (int) $hook->id,
                     'uuid' => $uuid,
                     'eventname' => $eventname,
                     'status' => 'queued',
                     'attempts' => 0,
-                    'nextattempt' => $now,
+                    'nextattempt' => $nextattempt,
                     'httpstatus' => null,
                     'errorcode' => null,
                     'duration' => null,
@@ -182,7 +179,10 @@ class observer {
                 // Queue background adhoc task (custom data contains strictly delivery ID only).
                 $task = new \local_webhookengine\task\send_delivery();
                 $task->set_custom_data((object) ['deliveryid' => $deliveryid]);
-                \core\task\manager::queue_adhoc_task($task);
+                if ($iscircuitopen) {
+                    $task->set_next_run_time($nextattempt);
+                }
+                \core\task\manager::queue_adhoc_task($task, true);
             }
         } catch (\Throwable $e) {
             // Graceful error isolation: record observer error in drop ledger if target hook was identified.

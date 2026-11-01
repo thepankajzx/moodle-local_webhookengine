@@ -84,17 +84,51 @@ class delivery_service {
         }
 
         // Circuit breaker check: if circuit is open and in active cooldown, defer delivery.
-        if (!circuit_breaker::can_dispatch($hook)) {
-            $delivery->nextattempt = (int) $hook->circuitcooldownuntil;
+        $circuitstate = circuit_breaker::get_state($hook);
+        if ($circuitstate === circuit_breaker::STATE_OPEN) {
+            $nextattempt = max(time() + 30, (int) $hook->circuitcooldownuntil);
+            $delivery->nextattempt = $nextattempt;
             $DB->update_record('local_webhookengine_delivery', $delivery);
+
+            $task = new \local_webhookengine\task\send_delivery();
+            $task->set_custom_data((object) ['deliveryid' => (int) $delivery->id]);
+            $task->set_next_run_time($nextattempt);
+            \core\task\manager::queue_adhoc_task($task, true);
             return false;
+        }
+
+        $isprobing = false;
+        if ($circuitstate === circuit_breaker::STATE_HALF_OPEN) {
+            if (!circuit_breaker::claim_half_open_probe((int) $hook->id)) {
+                // A probe is already in flight for this hook. Keep this delivery deferred.
+                $nextattempt = time() + 30;
+                $delivery->nextattempt = $nextattempt;
+                $DB->update_record('local_webhookengine_delivery', $delivery);
+
+                $task = new \local_webhookengine\task\send_delivery();
+                $task->set_custom_data((object) ['deliveryid' => (int) $delivery->id]);
+                $task->set_next_run_time($nextattempt);
+                \core\task\manager::queue_adhoc_task($task, true);
+                return false;
+            }
+            $isprobing = true;
         }
 
         // Concurrency slot check: prevent single degraded endpoint from starving cron worker threads.
         $maxconcurrent = (int) get_config('local_webhookengine', 'maxconcurrenthook') ?: 5;
         if (!rate_limiter::acquire_hook_slot($hook->id, $maxconcurrent)) {
-            $delivery->nextattempt = time() + random_int(30, 60);
+            $nextattempt = time() + random_int(30, 60);
+            $delivery->nextattempt = $nextattempt;
             $DB->update_record('local_webhookengine_delivery', $delivery);
+
+            $task = new \local_webhookengine\task\send_delivery();
+            $task->set_custom_data((object) ['deliveryid' => (int) $delivery->id]);
+            $task->set_next_run_time($nextattempt);
+            \core\task\manager::queue_adhoc_task($task, true);
+
+            if ($isprobing) {
+                circuit_breaker::release_probe_claim((int) $hook->id);
+            }
             return false;
         }
 
@@ -281,18 +315,27 @@ class delivery_service {
 
                 // Queue ad-hoc task for next run.
                 $task = new \local_webhookengine\task\send_delivery();
-                $task->set_custom_data(['deliveryid' => $delivery->id]);
+                $task->set_custom_data((object) ['deliveryid' => (int) $delivery->id]);
                 $task->set_next_run_time($delivery->nextattempt);
                 \core\task\manager::queue_adhoc_task($task, true);
 
+                $this->record_hook_failure($hook);
                 return false;
             }
 
             // Terminal failure.
             $delivery->status = 'failed';
-            if ($status >= 400 && $status < 500 && !$isretryable) {
+            $ispermanent4xx = ($status >= 400 && $status < 500 && !$isretryable);
+            if ($ispermanent4xx) {
                 $delivery->errorcode = 'http_' . $status;
-            } else if ($delivery->attempts >= $hook->maxattempts) {
+                $delivery->nextattempt = null;
+                $DB->update_record('local_webhookengine_delivery', $delivery);
+                circuit_breaker::trigger_misconfig_alert($hook, $status);
+                // Do NOT count permanent 4xx toward the breaker.
+                return false;
+            }
+
+            if ($delivery->attempts >= $hook->maxattempts) {
                 $delivery->errorcode = 'max_attempts_exceeded';
             } else {
                 $delivery->errorcode = $response->errno > 0 ? 'network_error_' . $response->errno : 'delivery_failed';
@@ -304,6 +347,9 @@ class delivery_service {
             return false;
         } finally {
             rate_limiter::release_hook_slot($hook->id);
+            if (!empty($isprobing)) {
+                circuit_breaker::release_probe_claim((int) $hook->id);
+            }
         }
     }
 

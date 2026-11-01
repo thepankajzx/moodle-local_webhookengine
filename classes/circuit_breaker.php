@@ -136,6 +136,8 @@ class circuit_breaker {
         $hook->circuitcooldownuntil = $cooldownuntil;
         $hook->lastfailure = $now;
 
+        self::release_probe_claim((int) $hook->id);
+
         if ($tripped) {
             self::trigger_circuit_alert($hook, $newstreak, $cooldownduration);
         }
@@ -166,6 +168,8 @@ class circuit_breaker {
         $hook->circuitstate = self::STATE_CLOSED;
         $hook->circuitcooldownuntil = 0;
         $hook->lastsuccess = $now;
+
+        self::release_probe_claim((int) $hook->id);
     }
 
     /**
@@ -190,7 +194,55 @@ class circuit_breaker {
             'timemodified' => $now,
         ];
 
+        self::release_probe_claim($hookid);
         return $DB->update_record('local_webhookengine_hook', $update);
+    }
+
+    /**
+     * Atomically claim the single in-flight probe slot for a hook in half-open state.
+     *
+     * @param int $hookid Hook database ID.
+     * @return bool True if probe claim was acquired, false if a probe is already in-flight.
+     */
+    public static function claim_half_open_probe(int $hookid): bool {
+        if ($hookid <= 0) {
+            return false;
+        }
+
+        try {
+            $cache = \cache::make('local_webhookengine', 'ratelimit');
+            $key = 'probe_claim_' . $hookid;
+            $existing = $cache->get($key);
+
+            if (!empty($existing) && (time() - (int) $existing) < 60) {
+                // A probe is already in flight (claim valid for 60s).
+                return false;
+            }
+
+            $cache->set($key, time());
+            return true;
+        } catch (\Throwable $e) {
+            debugging('local_webhookengine: failed to claim probe slot: ' . $e->getMessage(), DEBUG_DEVELOPER);
+            return true;
+        }
+    }
+
+    /**
+     * Release the in-flight probe claim for a hook.
+     *
+     * @param int $hookid Hook database ID.
+     */
+    public static function release_probe_claim(int $hookid): void {
+        if ($hookid <= 0) {
+            return;
+        }
+
+        try {
+            $cache = \cache::make('local_webhookengine', 'ratelimit');
+            $cache->delete('probe_claim_' . $hookid);
+        } catch (\Throwable $e) {
+            unset($e);
+        }
     }
 
     /**
@@ -211,5 +263,38 @@ class circuit_breaker {
         ]);
 
         alert_dispatcher::dispatch('circuit_breaker_alert', $subject, $message);
+    }
+
+    /**
+     * Dispatch an administrative notification alert when a permanent 4xx misconfiguration occurs.
+     *
+     * @param object $hook Hook database record.
+     * @param int $httpstatus HTTP status code.
+     */
+    public static function trigger_misconfig_alert(object $hook, int $httpstatus): void {
+        try {
+            $cache = \cache::make('local_webhookengine', 'ratelimit');
+            $cooldownkey = 'alert_misconfig_' . $hook->id . '_' . $httpstatus;
+            if ($cache->get($cooldownkey) !== false) {
+                return;
+            }
+            // Cooldown for 15 minutes.
+            $cache->set($cooldownkey, 1);
+
+            $subject = get_string('misconfig_alert_subject', 'local_webhookengine', (object) [
+                'name' => $hook->name,
+                'status' => $httpstatus,
+            ]);
+            $message = get_string('misconfig_alert_body', 'local_webhookengine', (object) [
+                'name' => $hook->name,
+                'url' => $hook->url,
+                'status' => $httpstatus,
+                'time' => userdate(time()),
+            ]);
+
+            alert_dispatcher::dispatch('circuit_breaker_alert', $subject, $message);
+        } catch (\Throwable $e) {
+            debugging('local_webhookengine: failed to dispatch misconfig alert: ' . $e->getMessage(), DEBUG_DEVELOPER);
+        }
     }
 }
