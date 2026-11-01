@@ -109,6 +109,7 @@ $string['deliveries_queued_explanation'] = 'These deliveries are safely recorded
 $string['destination_host'] = 'Destination host';
 $string['download_archive'] = 'Download archive';
 $string['download_deliveries'] = 'Download delivery logs';
+$string['export_deliveries_desc'] = 'Choose export format and privacy options to download delivery audit trail records.';
 $string['drop_reason_circuit_breaker_open'] = 'Circuit breaker open (consecutive endpoint failures)';
 $string['drops_badge'] = '{$a} dropped';
 $string['drops_count'] = 'Dropped events';

@@ -154,47 +154,108 @@ if (!$table->is_downloading()) {
         }
     }
 
-    // Render personal data export toggle if user has the high-privilege personal data export capability.
-    if ($canexportpersonal && $canexport) {
-        $toggleparams = $hookid ? ['hookid' => $hookid] : [];
-        $toggleparams['includepersonal'] = $includepersonal ? 0 : 1;
-        $toggleurl = new moodle_url('/local/webhookengine/deliveries.php', $toggleparams);
-
-        $checkboxattrs = [
-            'type' => 'checkbox',
-            'id' => 'includepersonal_toggle',
-            'style' => 'width: 1.35rem; height: 1.35rem; cursor: pointer; margin: 0; position: static;',
-            'onchange' => "window.location.href='" . $toggleurl->out(false) . "';",
-        ];
-        if ($includepersonal) {
-            $checkboxattrs['checked'] = 'checked';
+    // Render unified export action hub if user has the export capability.
+    if ($canexport) {
+        $formats = \core_plugin_manager::instance()->get_plugins_of_type('dataformat');
+        $formatoptions = '';
+        foreach ($formats as $format) {
+            if ($format->is_enabled()) {
+                $formatoptions .= html_writer::tag(
+                    'option',
+                    get_string('dataformat', $format->component),
+                    ['value' => $format->name]
+                );
+            }
         }
-        $checkbox = html_writer::empty_tag('input', $checkboxattrs);
 
-        $labeltext = get_string('include_personal_data', 'local_webhookengine');
-        $label = html_writer::tag('label', $labeltext, [
-            'for' => 'includepersonal_toggle',
-            'class' => 'mb-0 font-weight-bold fw-bold text-dark',
-            'style' => 'cursor: pointer;',
+        $formaction = $pageurl->out_omit_querystring();
+        $hiddens = html_writer::empty_tag('input', ['type' => 'hidden', 'name' => 'sesskey', 'value' => sesskey()]);
+        if ($hookid > 0) {
+            $hiddens .= html_writer::empty_tag('input', ['type' => 'hidden', 'name' => 'hookid', 'value' => $hookid]);
+        }
+        if (!empty($status)) {
+            $hiddens .= html_writer::empty_tag('input', ['type' => 'hidden', 'name' => 'status', 'value' => $status]);
+        }
+
+        $payloadelement = '';
+        if ($canexportpersonal) {
+            $checkboxattrs = [
+                'type' => 'checkbox',
+                'name' => 'includepersonal',
+                'value' => '1',
+                'id' => 'export_includepersonal',
+                'class' => 'form-check-input',
+                'style' => 'width: 1.25rem; height: 1.25rem; cursor: pointer; margin-top: 0;',
+            ];
+            if ($includepersonal) {
+                $checkboxattrs['checked'] = 'checked';
+            }
+            $checkbox = html_writer::empty_tag('input', $checkboxattrs);
+            $checklabel = html_writer::tag(
+                'label',
+                get_string('include_personal_data', 'local_webhookengine'),
+                [
+                    'for' => 'export_includepersonal',
+                    'class' => 'form-check-label ms-2 ml-2 mb-0 fw-bold font-weight-bold text-dark',
+                    'style' => 'cursor: pointer; font-size: 0.9rem;',
+                ]
+            );
+            $payloadelement = html_writer::div(
+                $checkbox . $checklabel,
+                'form-check d-flex align-items-center bg-white px-3 py-2 rounded border shadow-sm mb-2 mb-md-0'
+            );
+        }
+
+        $formatlabel = html_writer::tag(
+            'label',
+            get_string('downloadas', 'table') . ':',
+            [
+                'for' => 'export_dataformat',
+                'class' => 'mb-0 text-muted small fw-bold font-weight-bold me-1 mr-1',
+            ]
+        );
+        $formatselect = html_writer::tag('select', $formatoptions, [
+            'name' => 'download',
+            'id' => 'export_dataformat',
+            'class' => 'form-control custom-select form-control-sm me-2 mr-2',
+            'style' => 'width: auto; min-width: 170px;',
+        ]);
+        $downloadsubmit = html_writer::tag('button', '📥 ' . get_string('download'), [
+            'type' => 'submit',
+            'class' => 'btn btn-primary btn-sm px-3 fw-bold font-weight-bold',
         ]);
 
-        $statusbadge = $includepersonal
-            ? html_writer::span(
-                get_string('enabled', 'local_webhookengine'),
-                'badge badge-warning bg-warning text-dark ms-2 ml-2'
-            )
-            : '';
+        $actioncontrols = html_writer::div(
+            $formatlabel . $formatselect . $downloadsubmit,
+            'd-flex align-items-center ms-auto ml-auto',
+            ['style' => 'gap: 0.35rem;']
+        );
 
-        $rightcontent = html_writer::tag('div', $checkbox . $statusbadge, [
-            'class' => 'd-flex align-items-center ms-3 ml-3',
-            'style' => 'gap: 0.5rem;',
+        $formcontent = $hiddens . $payloadelement . $actioncontrols;
+        $exportform = html_writer::tag('form', $formcontent, [
+            'method' => 'get',
+            'action' => $formaction,
+            'class' => 'd-flex flex-wrap align-items-center justify-content-between w-100',
+            'style' => 'gap: 0.75rem;',
         ]);
 
-        $togglebox = html_writer::tag('div', $label . $rightcontent, [
-            'class' => 'd-flex align-items-center justify-content-between p-3 mb-3 bg-light border rounded shadow-sm',
-            'style' => 'max-width: 580px;',
+        $cardtitle = html_writer::tag('span', '📥 ' . get_string('download_deliveries', 'local_webhookengine'), [
+            'class' => 'h6 fw-bold font-weight-bold mb-0 text-dark',
         ]);
-        echo html_writer::div($togglebox, 'mb-2');
+        $carddesc = html_writer::tag('span', get_string('export_deliveries_desc', 'local_webhookengine'), [
+            'class' => 'text-muted small',
+        ]);
+        $cardheader = html_writer::div(
+            $cardtitle . $carddesc,
+            'd-flex flex-wrap align-items-center justify-content-between mb-2 w-100'
+        );
+
+        $exportcard = html_writer::div(
+            html_writer::div($cardheader . $exportform, 'card-body p-3'),
+            'card border mb-3 bg-light shadow-sm'
+        );
+
+        echo $exportcard;
     }
 }
 

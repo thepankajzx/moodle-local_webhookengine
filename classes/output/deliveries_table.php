@@ -104,10 +104,11 @@ class deliveries_table extends table_sql {
             $this->no_sorting('actions');
         }
 
-        // Enable standard export buttons if user has the export capability.
+        // Enable standard export support if user has the export capability.
+        // Download controls are unified cleanly into the dedicated top export action card.
         if (has_capability('local/webhookengine:exportlogs', \context_system::instance())) {
             $this->is_downloadable(true);
-            $this->show_download_buttons_at([TABLE_P_BOTTOM]);
+            $this->show_download_buttons_at([]);
         }
 
         $this->set_sql_params();

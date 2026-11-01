@@ -130,7 +130,7 @@ class renderer extends plugin_renderer_base {
             'success_url' => (new \moodle_url('/local/webhookengine/deliveries.php', ['status' => 'success']))->out(false),
             'deliveries_url' => (new \moodle_url('/local/webhookengine/deliveries.php'))->out(false),
             'add_hook_url' => (new \moodle_url('/local/webhookengine/edit.php'))->out(false),
-            'settings_url' => (new \moodle_url('/admin/settings.php', ['section' => 'local_webhookengine']))->out(false),
+            'settings_url' => (new \moodle_url('/admin/settings.php', ['section' => 'local_webhookengine_settings']))->out(false),
             'circuits_url' => '#hooks_table',
             'oldestage' => $oldestdisplay,
             'isdelayed' => $isdelayed,
