@@ -184,9 +184,7 @@ class delivery_service {
             if (empty($body)) {
                 // Reject delivery execution with error - never send an empty {} body.
                 $delivery->status = 'failed';
-                if (empty($delivery->errorcode)) {
-                    $delivery->errorcode = 'payload_purged_cannot_replay';
-                }
+                $delivery->errorcode = 'payload_purged_cannot_replay';
                 $delivery->timelastattempt = time();
                 $DB->update_record('local_webhookengine_delivery', $delivery);
                 return false;

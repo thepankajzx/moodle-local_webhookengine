@@ -97,7 +97,15 @@ final class access_control_test extends \advanced_testcase {
         $userid = 2;
         $whsec = 'whsec_testtoken1234567890abcdef123456';
 
-        // Create token via helper.
+        // Create token for unauthorized consumption check.
+        $unauthtoken = hook_repository::create_secret_reveal_token($hookid, $whsec, $userid);
+        $this->assertNotEmpty($unauthtoken);
+
+        // Consumption by wrong user must return null.
+        $wronguser = hook_repository::consume_secret_reveal_token($unauthtoken, $hookid, 9999);
+        $this->assertNull($wronguser);
+
+        // Create fresh token for authorized consumption lifecycle and raw cache inspection.
         $token = hook_repository::create_secret_reveal_token($hookid, $whsec, $userid);
         $this->assertNotEmpty($token);
 
@@ -107,10 +115,6 @@ final class access_control_test extends \advanced_testcase {
         $this->assertIsArray($rawcached);
         $this->assertNotEquals($whsec, $rawcached['secret'], 'Secret in MUC cache must be encrypted, not plaintext.');
         $this->assertStringStartsWith('sodium:', $rawcached['secret'], 'Secret must be encrypted with core encryption.');
-
-        // Consumption by wrong user must return null.
-        $wronguser = hook_repository::consume_secret_reveal_token($token, $hookid, 9999);
-        $this->assertNull($wronguser);
 
         // First legitimate consumption succeeds and returns original secret.
         $revealed = hook_repository::consume_secret_reveal_token($token, $hookid, $userid);

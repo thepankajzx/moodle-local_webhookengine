@@ -77,6 +77,10 @@ class alert_dispatcher {
                     'email' => $customemail,
                     'firstname' => 'Webhook',
                     'lastname' => 'Admin',
+                    'firstnamephonetic' => '',
+                    'lastnamephonetic' => '',
+                    'middlename' => '',
+                    'alternatename' => '',
                     'maildisplay' => 1,
                     'mailformat' => 1,
                 ];

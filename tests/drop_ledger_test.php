@@ -135,6 +135,7 @@ final class drop_ledger_test extends \advanced_testcase {
             ];
             $DB->insert_record('local_webhookengine_delivery', $delivery);
         }
+        rate_limiter::adjust_hook_backlog($hookid, 5);
 
         // Now backlog must be exceeded.
         $this->assertTrue(rate_limiter::is_hook_backlog_exceeded($hookid, 5));

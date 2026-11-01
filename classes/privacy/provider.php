@@ -93,7 +93,7 @@ class provider implements
 
         if ($hasdeliveries || $hashooks) {
             $contextlist->add_from_sql(
-                "SELECT id FROM {context} WHERE id = :contextid",
+                "SELECT id AS contextid FROM {context} WHERE id = :contextid",
                 ['contextid' => $systemcontext->id]
             );
         }
