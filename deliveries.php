@@ -33,7 +33,19 @@ $context = context_system::instance();
 require_capability('local/webhookengine:viewlogs', $context);
 
 $hookid = optional_param('hookid', 0, PARAM_INT);
-$pageparams = $hookid ? ['hookid' => $hookid] : [];
+$status = optional_param('status', '', PARAM_ALPHA);
+$validstatuses = ['queued', 'success', 'retrying', 'failed', 'dropped'];
+if (!in_array($status, $validstatuses, true)) {
+    $status = '';
+}
+
+$pageparams = [];
+if ($hookid > 0) {
+    $pageparams['hookid'] = $hookid;
+}
+if (!empty($status)) {
+    $pageparams['status'] = $status;
+}
 $pageurl = new moodle_url('/local/webhookengine/deliveries.php', $pageparams);
 
 $PAGE->set_context($context);
@@ -48,11 +60,73 @@ $canexport = has_capability('local/webhookengine:exportlogs', $context);
 $canexportpersonal = has_capability('local/webhookengine:exportpersonaldata', $context);
 $allowpersonal = ($includepersonal && $canexportpersonal);
 
-$table = new deliveries_table('local_webhookengine_deliveries', $pageurl, $hookid ?: null, $allowpersonal);
+$table = new deliveries_table('local_webhookengine_deliveries', $pageurl, $hookid ?: null, $allowpersonal, $status ?: null);
 $table->is_downloading($download, 'webhook_deliveries_' . date('Ymd_His'));
 
 if (!$table->is_downloading()) {
     echo $OUTPUT->header();
+
+    // Top navigation and quick-return to dashboard.
+    $manageurl = new moodle_url('/local/webhookengine/manage.php');
+    echo html_writer::div(
+        html_writer::link(
+            $manageurl,
+            '← ' . get_string('manage_hooks', 'local_webhookengine'),
+            ['class' => 'btn btn-outline-secondary btn-sm mb-3']
+        ),
+        'd-flex align-items-center justify-content-between'
+    );
+
+    // Interactive Status Filter Pills.
+    $filteritems = [
+        '' => get_string('filter_status_all', 'local_webhookengine'),
+        'queued' => get_string('filter_status_queued', 'local_webhookengine'),
+        'success' => get_string('filter_status_success', 'local_webhookengine'),
+        'retrying' => get_string('filter_status_retrying', 'local_webhookengine'),
+        'failed' => get_string('filter_status_failed', 'local_webhookengine'),
+        'dropped' => get_string('filter_status_dropped', 'local_webhookengine'),
+    ];
+
+    $filterbtns = [];
+    foreach ($filteritems as $fstatus => $flabel) {
+        $btnparams = $hookid > 0 ? ['hookid' => $hookid] : [];
+        if (!empty($fstatus)) {
+            $btnparams['status'] = $fstatus;
+        }
+        $btnurl = new moodle_url('/local/webhookengine/deliveries.php', $btnparams);
+        $isactive = ($status === $fstatus);
+        $btnclass = $isactive ? 'btn btn-primary btn-sm' : 'btn btn-outline-secondary btn-sm';
+        $filterbtns[] = html_writer::link($btnurl, $flabel, ['class' => $btnclass]);
+    }
+
+    $filtergroup = html_writer::div(
+        implode(' ', $filterbtns),
+        'btn-group flex-wrap mb-3',
+        ['role' => 'group', 'aria-label' => 'Delivery status filter']
+    );
+    echo $filtergroup;
+
+    // Explanatory Banner when filtering by queued deliveries.
+    if ($status === 'queued') {
+        $infoicon = '📬 ';
+        $alertcontent = html_writer::tag('strong', $infoicon . get_string('card_queued_title', 'local_webhookengine') . ': ')
+            . get_string('deliveries_queued_explanation', 'local_webhookengine');
+        echo html_writer::div($alertcontent, 'alert alert-info shadow-sm mb-3');
+    }
+
+    // Active filter chip / clear filter button.
+    if (!empty($status)) {
+        $clearparams = $hookid > 0 ? ['hookid' => $hookid] : [];
+        $clearurl = new moodle_url('/local/webhookengine/deliveries.php', $clearparams);
+        $chiptext = get_string('filter_active_label', 'local_webhookengine') . ' ' . html_writer::span(
+            $filteritems[$status] ?? $status,
+            'badge badge-primary bg-primary text-white ms-1'
+        );
+        $clearlink = html_writer::link($clearurl, '✕ ' . get_string('filter_clear_action', 'local_webhookengine'), [
+            'class' => 'btn btn-sm btn-link text-decoration-none ms-2',
+        ]);
+        echo html_writer::div($chiptext . $clearlink, 'd-flex align-items-center mb-3 small text-muted');
+    }
 
     // Hook filter selector or header.
     if ($hookid > 0) {

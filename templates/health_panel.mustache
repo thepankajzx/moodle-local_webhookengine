@@ -17,65 +17,118 @@
 {{!
     @template local_webhookengine/health_panel
 
-    Health panel template.
-
-    Example context (json):
-    {
-        "queuedcount": 12,
-        "totaldrops": 3,
-        "hasdrops": true,
-        "oldestage": "5 mins",
-        "isdelayed": false,
-        "killswitch": false
-    }
+    Executive health and telemetry overview panel.
 }}
-<div class="card mb-4 local_webhookengine_healthpanel">
-    <div class="card-body">
-        <div class="row align-items-center">
-            <div class="col-md-3">
-                <div class="text-muted small">{{#str}}queued_deliveries, local_webhookengine{{/str}}</div>
-                <div class="h4 mb-0 font-weight-bold">{{queuedcount}}</div>
-            </div>
-            <div class="col-md-3">
-                <div class="text-muted small">{{#str}}drops_count, local_webhookengine{{/str}}</div>
-                <div class="h4 mb-0 font-weight-bold {{#hasdrops}}text-danger{{/hasdrops}}">{{totaldrops}}</div>
-            </div>
-            <div class="col-md-3">
-                <div class="text-muted small">{{#str}}oldest_queued_age, local_webhookengine{{/str}}</div>
-                <div class="h5 mb-0 {{#isdelayed}}text-danger{{/isdelayed}}">
-                    {{#oldestage}}{{oldestage}}{{/oldestage}}
-                    {{^oldestage}}-{{/oldestage}}
+<div class="webhookengine-dashboard-container mb-4">
+    <!-- Top Executive Hero Banner -->
+    <div class="webhookengine-hero webhookengine-hero-{{herostatus}} p-4 mb-4 rounded-3 shadow-sm border">
+        <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
+            <div class="d-flex align-items-center">
+                <div class="webhookengine-status-indicator me-3">
+                    <span class="webhookengine-pulse-dot webhookengine-dot-{{herostatus}}"></span>
                 </div>
-                {{#isdelayed}}
-                <div class="text-danger small mt-1">{{#str}}cron_delayed_warning, local_webhookengine{{/str}}</div>
-                {{/isdelayed}}
+                <div>
+                    <h3 class="h4 mb-1 font-weight-bold fw-bold text-dark">{{herotitle}}</h3>
+                    <p class="mb-0 text-muted small">{{herodesc}}</p>
+                </div>
             </div>
-            <div class="col-md-3">
-                <div class="text-muted small">{{#str}}system_status, local_webhookengine{{/str}}</div>
-                {{#killswitch}}
-                <span class="badge badge-danger bg-danger">{{#str}}killswitch_active, local_webhookengine{{/str}}</span>
-                {{/killswitch}}
-                {{^killswitch}}
-                <span class="badge badge-success bg-success">{{#str}}system_operational, local_webhookengine{{/str}}</span>
-                {{/killswitch}}
+            <div class="d-flex align-items-center gap-2">
+                <a href="{{add_hook_url}}" class="btn btn-primary btn-sm px-3 shadow-sm">
+                    + {{#str}}add_new_hook, local_webhookengine{{/str}}
+                </a>
+                <a href="{{deliveries_url}}" class="btn btn-outline-secondary btn-sm px-3">
+                    {{#str}}deliveries, local_webhookengine{{/str}}
+                </a>
+                <a href="{{settings_url}}" class="btn btn-outline-secondary btn-sm" title="{{#str}}settings{{/str}}">
+                    ⚙️
+                </a>
             </div>
         </div>
-        <hr class="my-3">
-        <div class="row align-items-center">
-            <div class="col-md-4">
-                <div class="text-muted small">{{#str}}success_rate_24h, local_webhookengine{{/str}}</div>
-                <div class="h5 mb-0 font-weight-bold text-dark">{{successrate_display}}</div>
-            </div>
-            <div class="col-md-4">
-                <div class="text-muted small">{{#str}}p95_latency, local_webhookengine{{/str}}</div>
-                <div class="h5 mb-0 font-weight-bold text-dark">{{p95_display}}</div>
-            </div>
-            <div class="col-md-4">
-                <div class="text-muted small">{{#str}}circuits_status, local_webhookengine{{/str}}</div>
-                <div class="h6 mb-0 font-weight-bold {{#has_tripped_circuits}}text-danger{{/has_tripped_circuits}}{{^has_tripped_circuits}}text-success{{/has_tripped_circuits}}">
+    </div>
+
+    <!-- Interactive Drill-Down Metric Cards -->
+    <div class="row g-3">
+        <!-- Card 1: Outbox Queue -->
+        <div class="col-12 col-sm-6 col-xl">
+            <a href="{{queued_url}}" class="webhookengine-card webhookengine-card-blue h-100 d-flex flex-column text-decoration-none">
+                <div class="webhookengine-card-header d-flex justify-content-between align-items-center mb-2">
+                    <span class="webhookengine-card-title">{{#str}}card_queued_title, local_webhookengine{{/str}}</span>
+                    <span class="webhookengine-pill webhookengine-pill-blue">📬 {{#str}}card_queued_badge, local_webhookengine{{/str}}</span>
+                </div>
+                <div class="webhookengine-card-metric text-dark mb-1">{{queuedcount_formatted}}</div>
+                <div class="webhookengine-card-desc text-muted mb-3">{{#str}}card_queued_subtitle, local_webhookengine{{/str}}</div>
+                <div class="webhookengine-card-footer mt-auto pt-2 border-top text-primary small font-weight-bold fw-bold">
+                    {{#str}}card_queued_action, local_webhookengine{{/str}} &rarr;
+                </div>
+            </a>
+        </div>
+
+        <!-- Card 2: Data Loss Prevention -->
+        <div class="col-12 col-sm-6 col-xl">
+            <a href="{{drops_url}}" class="webhookengine-card webhookengine-card-green h-100 d-flex flex-column text-decoration-none">
+                <div class="webhookengine-card-header d-flex justify-content-between align-items-center mb-2">
+                    <span class="webhookengine-card-title">{{#str}}card_drops_title, local_webhookengine{{/str}}</span>
+                    <span class="webhookengine-pill {{#hasdrops}}webhookengine-pill-red{{/hasdrops}}{{^hasdrops}}webhookengine-pill-green{{/hasdrops}}">
+                        🛡️ {{#hasdrops}}{{#str}}card_drops_badge_alert, local_webhookengine{{/str}}{{/hasdrops}}{{^hasdrops}}{{#str}}card_drops_badge_zero, local_webhookengine{{/str}}{{/hasdrops}}
+                    </span>
+                </div>
+                <div class="webhookengine-card-metric {{#hasdrops}}text-danger{{/hasdrops}}{{^hasdrops}}text-success{{/hasdrops}} mb-1">
+                    {{#hasdrops}}{{totaldrops_formatted}}{{/hasdrops}}{{^hasdrops}}0 Lost{{/hasdrops}}
+                </div>
+                <div class="webhookengine-card-desc text-muted mb-3">{{#str}}card_drops_subtitle, local_webhookengine{{/str}}</div>
+                <div class="webhookengine-card-footer mt-auto pt-2 border-top text-success small font-weight-bold fw-bold">
+                    {{#str}}card_drops_action, local_webhookengine{{/str}} &rarr;
+                </div>
+            </a>
+        </div>
+
+        <!-- Card 3: 24h Success Rate -->
+        <div class="col-12 col-sm-6 col-xl">
+            <a href="{{success_url}}" class="webhookengine-card webhookengine-card-emerald h-100 d-flex flex-column text-decoration-none">
+                <div class="webhookengine-card-header d-flex justify-content-between align-items-center mb-2">
+                    <span class="webhookengine-card-title">{{#str}}card_success_title, local_webhookengine{{/str}}</span>
+                    <span class="webhookengine-pill webhookengine-pill-green">📈 {{#str}}card_success_badge, local_webhookengine{{/str}}</span>
+                </div>
+                <div class="webhookengine-card-metric text-success mb-1">{{successrate_display}}</div>
+                <div class="webhookengine-card-desc text-muted mb-3">{{#str}}card_success_subtitle, local_webhookengine{{/str}}</div>
+                <div class="webhookengine-card-footer mt-auto pt-2 border-top text-success small font-weight-bold fw-bold">
+                    {{#str}}card_success_action, local_webhookengine{{/str}} &rarr;
+                </div>
+            </a>
+        </div>
+
+        <!-- Card 4: Dispatch Speed (P95) -->
+        <div class="col-12 col-sm-6 col-xl">
+            <a href="{{deliveries_url}}" class="webhookengine-card webhookengine-card-purple h-100 d-flex flex-column text-decoration-none">
+                <div class="webhookengine-card-header d-flex justify-content-between align-items-center mb-2">
+                    <span class="webhookengine-card-title">{{#str}}card_latency_title, local_webhookengine{{/str}}</span>
+                    <span class="webhookengine-pill webhookengine-pill-purple">⚡ {{#str}}card_latency_badge, local_webhookengine{{/str}}</span>
+                </div>
+                <div class="webhookengine-card-metric text-purple mb-1">{{p95_display}}</div>
+                <div class="webhookengine-card-desc text-muted mb-3">{{#str}}card_latency_subtitle, local_webhookengine{{/str}}</div>
+                <div class="webhookengine-card-footer mt-auto pt-2 border-top text-purple small font-weight-bold fw-bold">
+                    {{#str}}card_latency_action, local_webhookengine{{/str}} &rarr;
+                </div>
+            </a>
+        </div>
+
+        <!-- Card 5: Connection Safety Switches -->
+        <div class="col-12 col-sm-6 col-xl">
+            <a href="{{circuits_url}}" class="webhookengine-card webhookengine-card-amber h-100 d-flex flex-column text-decoration-none">
+                <div class="webhookengine-card-header d-flex justify-content-between align-items-center mb-2">
+                    <span class="webhookengine-card-title">{{#str}}card_circuits_title, local_webhookengine{{/str}}</span>
+                    <span class="webhookengine-pill {{#has_tripped_circuits}}webhookengine-pill-amber{{/has_tripped_circuits}}{{^has_tripped_circuits}}webhookengine-pill-green{{/has_tripped_circuits}}">
+                        🔌 {{#has_tripped_circuits}}{{#str}}card_circuits_badge_tripped, local_webhookengine{{/str}}{{/has_tripped_circuits}}{{^has_tripped_circuits}}{{#str}}card_circuits_badge_healthy, local_webhookengine{{/str}}{{/has_tripped_circuits}}
+                    </span>
+                </div>
+                <div class="webhookengine-card-metric webhookengine-card-metric-sm {{#has_tripped_circuits}}text-warning{{/has_tripped_circuits}}{{^has_tripped_circuits}}text-success{{/has_tripped_circuits}} mb-1">
                     {{circuits_status_display}}
                 </div>
-            </div>
+                <div class="webhookengine-card-desc text-muted mb-3">{{#str}}card_circuits_subtitle, local_webhookengine{{/str}}</div>
+                <div class="webhookengine-card-footer mt-auto pt-2 border-top text-warning small font-weight-bold fw-bold">
+                    {{#str}}card_circuits_action, local_webhookengine{{/str}} &rarr;
+                </div>
+            </a>
         </div>
     </div>
 </div>

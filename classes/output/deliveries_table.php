@@ -35,6 +35,9 @@ class deliveries_table extends table_sql {
     /** @var int|null Target hook ID filter. */
     protected ?int $hookid;
 
+    /** @var string|null Status filter. */
+    protected ?string $status;
+
     /** @var bool Can the current user replay deliveries? */
     protected bool $canreplay;
 
@@ -48,10 +51,18 @@ class deliveries_table extends table_sql {
      * @param moodle_url $baseurl Page base URL.
      * @param int|null $hookid Hook ID filter.
      * @param bool $includepersonal Whether personal data is included in export.
+     * @param string|null $status Status filter (queued, success, failed, retrying, dropped).
      */
-    public function __construct(string $uniqueid, moodle_url $baseurl, ?int $hookid = null, bool $includepersonal = false) {
+    public function __construct(
+        string $uniqueid,
+        moodle_url $baseurl,
+        ?int $hookid = null,
+        bool $includepersonal = false,
+        ?string $status = null
+    ) {
         parent::__construct($uniqueid);
         $this->hookid = $hookid;
+        $this->status = $status;
         $this->includepersonal = $includepersonal;
         $this->canreplay = has_capability('local/webhookengine:replay', \context_system::instance());
 
@@ -115,6 +126,11 @@ class deliveries_table extends table_sql {
         if ($this->hookid !== null && $this->hookid > 0) {
             $where[] = 'hookid = :hookid';
             $params['hookid'] = $this->hookid;
+        }
+
+        if (!empty($this->status)) {
+            $where[] = 'status = :status';
+            $params['status'] = $this->status;
         }
 
         $this->set_sql($fields, $from, implode(' AND ', $where), $params);

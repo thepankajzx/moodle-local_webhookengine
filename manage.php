@@ -53,13 +53,8 @@ echo $renderer->render_health_panel(
 // Hooks Table.
 $hooks = \local_webhookengine\hook_repository::get_hooks();
 
-$addurl = new moodle_url('/local/webhookengine/edit.php');
-$deliveriesurl = new moodle_url('/local/webhookengine/deliveries.php');
-echo html_writer::div(
-    html_writer::link($addurl, get_string('add_new_hook', 'local_webhookengine'), ['class' => 'btn btn-primary me-2']) .
-    html_writer::link($deliveriesurl, get_string('deliveries', 'local_webhookengine'), ['class' => 'btn btn-outline-secondary']),
-    'mb-3'
-);
+echo html_writer::tag('div', '', ['id' => 'hooks_table', 'class' => 'mt-4']);
+echo html_writer::tag('h3', get_string('hooks', 'local_webhookengine'), ['class' => 'h4 font-weight-bold fw-bold mb-3']);
 
 if (empty($hooks)) {
     echo $OUTPUT->notification(get_string('no_hooks_configured', 'local_webhookengine'), 'info');
@@ -73,7 +68,7 @@ if (empty($hooks)) {
         get_string('last_success', 'local_webhookengine'),
         get_string('actions', 'local_webhookengine'),
     ];
-    $table->attributes['class'] = 'table table-striped table-hover align-middle';
+    $table->attributes['class'] = 'table table-striped table-hover align-middle shadow-sm border rounded';
 
     $fs = get_file_storage();
     $modals = [];

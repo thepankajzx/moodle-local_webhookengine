@@ -43,17 +43,63 @@ class renderer extends plugin_renderer_base {
         int $totaldrops = 0,
         array $telemetry = []
     ): string {
+        $hascircuittrip = !empty($telemetry['has_tripped_circuits']);
+        $isdelayed = ($oldestage !== null && $oldestage > 900);
+
+        if ($killswitch) {
+            $herostatus = 'danger';
+            $herotitle = get_string('dashboard_hero_paused_title', 'local_webhookengine');
+            $herodesc = get_string('dashboard_hero_paused_desc', 'local_webhookengine');
+            $herobadge = get_string('killswitch_active', 'local_webhookengine');
+        } else if ($hascircuittrip) {
+            $herostatus = 'warning';
+            $herotitle = get_string('dashboard_hero_warning_title', 'local_webhookengine');
+            $herodesc = get_string('dashboard_hero_warning_desc', 'local_webhookengine');
+            $herobadge = get_string('card_circuits_badge_tripped', 'local_webhookengine');
+        } else {
+            $herostatus = 'success';
+            $herotitle = get_string('dashboard_hero_operational_title', 'local_webhookengine');
+            $herodesc = get_string('dashboard_hero_operational_desc', 'local_webhookengine');
+            $herobadge = get_string('system_operational', 'local_webhookengine');
+        }
+
+        $oldestdisplay = null;
+        if (!empty($telemetry['oldestage'])) {
+            $oldestdisplay = $telemetry['oldestage'];
+        } else if ($oldestage !== null && $oldestage > 0) {
+            $oldestdisplay = format_time($oldestage);
+        } else {
+            $oldestdisplay = get_string('card_oldest_healthy', 'local_webhookengine');
+        }
+
         $context = array_merge([
             'queuedcount' => $queuedcount,
+            'queuedcount_formatted' => number_format($queuedcount),
+            'has_queued' => ($queuedcount > 0),
+            'queued_url' => (new \moodle_url('/local/webhookengine/deliveries.php', ['status' => 'queued']))->out(false),
             'totaldrops' => $totaldrops,
+            'totaldrops_formatted' => number_format($totaldrops),
             'hasdrops' => ($totaldrops > 0),
-            'oldestage' => $oldestage !== null ? format_time($oldestage) : null,
-            'isdelayed' => ($oldestage !== null && $oldestage > 900), // 15 minutes threshold.
+            'drops_url' => (new \moodle_url('/local/webhookengine/deliveries.php', ['status' => 'dropped']))->out(false),
+            'success_url' => (new \moodle_url('/local/webhookengine/deliveries.php', ['status' => 'success']))->out(false),
+            'deliveries_url' => (new \moodle_url('/local/webhookengine/deliveries.php'))->out(false),
+            'add_hook_url' => (new \moodle_url('/local/webhookengine/edit.php'))->out(false),
+            'settings_url' => (new \moodle_url('/admin/settings.php', ['section' => 'local_webhookengine']))->out(false),
+            'circuits_url' => '#hooks_table',
+            'oldestage' => $oldestdisplay,
+            'isdelayed' => $isdelayed,
             'killswitch' => $killswitch,
+            'herostatus' => $herostatus,
+            'herotitle' => $herotitle,
+            'herodesc' => $herodesc,
+            'herobadge' => $herobadge,
+            'is_operational' => ($herostatus === 'success'),
+            'is_warning' => ($herostatus === 'warning'),
+            'is_danger' => ($herostatus === 'danger'),
             'successrate_display' => $telemetry['successrate_display'] ?? '-',
             'p95_display' => $telemetry['p95_display'] ?? '-',
             'circuits_status_display' => $telemetry['circuits_status_display'] ?? '-',
-            'has_tripped_circuits' => !empty($telemetry['has_tripped_circuits']),
+            'has_tripped_circuits' => $hascircuittrip,
         ], $telemetry);
         return $this->render_from_template('local_webhookengine/health_panel', $context);
     }
