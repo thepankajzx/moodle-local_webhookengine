@@ -248,7 +248,7 @@ switch ($action) {
         $DB->update_record('local_webhookengine_delivery', $delivery);
 
         $task = new \local_webhookengine\task\send_delivery();
-        $task->set_custom_data(['deliveryid' => $delivery->id]);
+        $task->set_custom_data((object) ['deliveryid' => (int) $delivery->id]);
         \core\task\manager::queue_adhoc_task($task, true);
 
         $event = delivery_replayed::create([
@@ -280,7 +280,7 @@ switch ($action) {
             $DB->update_record('local_webhookengine_delivery', $rec);
 
             $task = new \local_webhookengine\task\send_delivery();
-            $task->set_custom_data(['deliveryid' => $rec->id]);
+            $task->set_custom_data((object) ['deliveryid' => (int) $rec->id]);
             \core\task\manager::queue_adhoc_task($task, true);
             $replayedcount++;
         }

@@ -74,29 +74,49 @@ class check_health extends \core\task\scheduled_task {
     }
 
     /**
-     * Re-queue overdue queued or retrying deliveries stuck for over 1 hour.
+     * Re-queue overdue queued or retrying deliveries stuck for over a few minutes.
      *
-     * Uses ad-hoc deduplication to ensure exactly one task per delivery in the queue.
+     * Sweeps overdue deliveries in batches up to the run limit and queues adhoc tasks
+     * with deduplication to ensure exactly one task per delivery in the queue.
      *
+     * @param int $limit Maximum number of deliveries to sweep and requeue per run.
+     * @param int $overdueseconds Overdue threshold in seconds (default 300 = 5 minutes).
+     * @param int $batchsize Database batch query size (default 250).
      * @return int Number of orphaned deliveries swept and requeued.
      */
-    public function sweep_orphaned_deliveries(): int {
+    public function sweep_orphaned_deliveries(int $limit = 1000, int $overdueseconds = 300, int $batchsize = 250): int {
         global $DB;
 
-        $onehourago = time() - 3600;
-        $sql = "SELECT id
-                  FROM {local_webhookengine_delivery}
-                 WHERE status IN ('queued', 'retrying')
-                   AND nextattempt < :onehourago
-              ORDER BY nextattempt ASC";
-        $orphans = $DB->get_records_sql($sql, ['onehourago' => $onehourago], 0, 100);
+        $overduetime = time() - $overdueseconds;
         $requeued = 0;
+        $now = time();
 
-        foreach ($orphans as $orphan) {
-            $task = new \local_webhookengine\task\send_delivery();
-            $task->set_custom_data((object) ['deliveryid' => (int) $orphan->id]);
-            \core\task\manager::queue_adhoc_task($task, true);
-            $requeued++;
+        while ($requeued < $limit) {
+            $fetchlimit = min($batchsize, $limit - $requeued);
+            $sql = "SELECT id
+                      FROM {local_webhookengine_delivery}
+                     WHERE status IN ('queued', 'retrying')
+                       AND nextattempt < :overduetime
+                  ORDER BY nextattempt ASC, id ASC";
+            $orphans = $DB->get_records_sql($sql, ['overduetime' => $overduetime], 0, $fetchlimit);
+            if (empty($orphans)) {
+                break;
+            }
+
+            $ids = [];
+            foreach ($orphans as $orphan) {
+                $task = new \local_webhookengine\task\send_delivery();
+                $task->set_custom_data((object) ['deliveryid' => (int) $orphan->id]);
+                \core\task\manager::queue_adhoc_task($task, true);
+                $ids[] = (int) $orphan->id;
+                $requeued++;
+            }
+
+            if (!empty($ids)) {
+                [$insql, $params] = $DB->get_in_or_equal($ids, SQL_PARAMS_NAMED);
+                $params['now'] = $now;
+                $DB->execute("UPDATE {local_webhookengine_delivery} SET nextattempt = :now WHERE id $insql", $params);
+            }
         }
 
         return $requeued;
