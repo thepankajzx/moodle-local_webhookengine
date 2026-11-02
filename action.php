@@ -196,11 +196,13 @@ switch ($action) {
             }
         }
 
-        if (!url_validator::validate_for_delivery($hook->url)) {
+        $validation = url_validator::resolve_and_validate_for_delivery($hook->url);
+        if (!$validation['valid']) {
             $manageurl = new moodle_url('/local/webhookengine/manage.php');
+            $errkey = !empty($validation['error']) ? $validation['error'] : 'error_blocked_url';
             redirect(
                 $manageurl,
-                get_string('error_blocked_url', 'local_webhookengine'),
+                get_string($errkey, 'local_webhookengine'),
                 null,
                 \core\output\notification::NOTIFY_ERROR
             );
