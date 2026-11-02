@@ -110,7 +110,6 @@ $string['deliveries_queued_explanation'] = 'These deliveries are safely recorded
 $string['destination_host'] = 'Destination host';
 $string['download_archive'] = 'Download archive';
 $string['download_deliveries'] = 'Download delivery logs';
-$string['export_deliveries_desc'] = 'Choose export format and privacy options to download delivery audit trail records.';
 $string['drop_reason_circuit_breaker_open'] = 'Circuit breaker open (consecutive endpoint failures)';
 $string['drops_badge'] = '{$a} dropped';
 $string['drops_count'] = 'Dropped events';
@@ -150,6 +149,7 @@ $string['event_test_sent'] = 'Webhook test event dispatched';
 $string['events_count'] = 'Events';
 $string['events_field_help'] = 'Select one or more events from the curated list, or type any custom or third-party plugin event class name and press Enter to subscribe.';
 $string['events_subscription'] = 'Event subscriptions';
+$string['export_deliveries_desc'] = 'Choose export format and privacy options to download delivery audit trail records.';
 $string['fail_streak_badge'] = '{$a} fails';
 $string['filename'] = 'File name';
 $string['filter_active_label'] = 'Filtering by Status:';
@@ -281,7 +281,17 @@ $string['setting_alertemail_desc'] = 'Optional email address or on-call distribu
 $string['setting_alloweddestinationdomains'] = 'Destination domain allowlist';
 $string['setting_alloweddestinationdomains_desc'] = 'Optional domain allowlist. When configured, outbound webhooks may only be sent to endpoints matching one of these domains or wildcard patterns (one per line, e.g. api.example.com, *.partner.org). Leave empty to allow any valid public destination.';
 $string['setting_allowedinternalhosts'] = 'Internal network and host allowlist';
-$string['setting_allowedinternalhosts_desc'] = 'List of internal hostnames, IP addresses, or CIDR subnets (one per line, e.g. 10.0.0.0/8, 192.168.1.50, webhook.internal) permitted to receive webhooks.';
+$string['setting_allowedinternalhosts_desc'] = 'SSRF allowlist exception for internal hosts, private subnets, and local development.
+
+Default and Recommended: Leave completely empty for production environments. When empty, all loopback addresses, RFC 1918 private subnets, link-local addresses, and cloud instance metadata services (169.254.169.254) are strictly blocked.
+
+Accepted Syntax (one entry per line or comma-separated):
+* Hostname: localhost or intranet.internal
+* Wildcard domain: *.internal or *.local
+* Exact IP address: 127.0.0.1, 192.168.1.50, ::1
+* CIDR subnet range: 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16
+
+Strict Security Warning: Allowing internal hosts permits Moodle to dispatch outbound HTTP requests into your private network or intranet. Never add entries here on a production site unless you are explicitly integrating with a dedicated internal service.';
 $string['setting_allowinsecurehttp'] = 'Allow plain HTTP endpoints (development only)';
 $string['setting_allowinsecurehttp_desc'] = 'When enabled, plain HTTP endpoints can be configured. Strictly for local development and testing.';
 $string['setting_archive_frequency'] = 'Archive frequency';
