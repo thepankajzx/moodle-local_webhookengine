@@ -116,6 +116,15 @@ switch ($action) {
 
     case 'send_test':
         require_capability('local/webhookengine:manage', $context);
+        if ((bool) get_config('local_webhookengine', 'killswitch')) {
+            $manageurl = new moodle_url('/local/webhookengine/manage.php');
+            redirect(
+                $manageurl,
+                get_string('error_killswitch_active', 'local_webhookengine'),
+                null,
+                \core\output\notification::NOTIFY_ERROR
+            );
+        }
         $hook = hook_repository::get_hook($id);
         if (!$hook) {
             throw new \moodle_exception('error_hook_not_found', 'local_webhookengine');
@@ -221,6 +230,15 @@ switch ($action) {
 
     case 'replay':
         require_capability('local/webhookengine:replay', $context);
+        if ((bool) get_config('local_webhookengine', 'killswitch')) {
+            $redirecturl = new moodle_url('/local/webhookengine/deliveries.php', ['hookid' => $hookid ?: null]);
+            redirect(
+                $redirecturl,
+                get_string('error_killswitch_active', 'local_webhookengine'),
+                null,
+                \core\output\notification::NOTIFY_ERROR
+            );
+        }
         $delivery = $DB->get_record('local_webhookengine_delivery', ['id' => $deliveryid]);
         if (!$delivery) {
             redirect(new moodle_url('/local/webhookengine/deliveries.php'));
@@ -256,6 +274,14 @@ switch ($action) {
 
     case 'replay_all_failed':
         require_capability('local/webhookengine:replay', $context);
+        if ((bool) get_config('local_webhookengine', 'killswitch')) {
+            redirect(
+                new moodle_url('/local/webhookengine/deliveries.php', ['hookid' => $hookid]),
+                get_string('error_killswitch_active', 'local_webhookengine'),
+                null,
+                \core\output\notification::NOTIFY_ERROR
+            );
+        }
         $failedrecords = $DB->get_records_select(
             'local_webhookengine_delivery',
             'hookid = :hookid AND status IN (\'failed\', \'dropped\') AND payload IS NOT NULL',
@@ -292,6 +318,15 @@ switch ($action) {
         $redirecturl = !empty($returnurl)
             ? new moodle_url($returnurl)
             : new moodle_url('/local/webhookengine/deliveries.php');
+
+        if ((bool) get_config('local_webhookengine', 'killswitch')) {
+            redirect(
+                $redirecturl,
+                get_string('error_killswitch_active', 'local_webhookengine'),
+                null,
+                \core\output\notification::NOTIFY_ERROR
+            );
+        }
 
         if (empty($deliveryids)) {
             redirect(

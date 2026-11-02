@@ -125,6 +125,7 @@ $string['error_invalid_action'] = 'Invalid action requested.';
 $string['error_invalid_header_format'] = 'Invalid header line format: {$a}. Use "Name: value".';
 $string['error_invalid_json_template'] = 'Custom payload template is not valid JSON.';
 $string['error_invalid_url'] = 'Please enter a valid URL.';
+$string['error_killswitch_active'] = 'Outbound delivery blocked: The global kill switch is currently active. Disable the kill switch in plugin settings to resume webhook traffic.';
 $string['error_maxattempts_range'] = 'Max attempts must be between 1 and 10.';
 $string['error_no_events_selected'] = 'You must select at least one event to subscribe to.';
 $string['error_oauth2_failed'] = 'OAuth2 token request failed: {$a}';
